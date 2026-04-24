@@ -1,0 +1,139 @@
+/* ── BASE: Reset, tokens, typography ────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Core palette */
+  --bg:  #07060d;
+  --bg2: #0e0c18;
+  --bg3: #13101f;
+
+  /* Surfaces */
+  --surface:       rgba(255,255,255,.028);
+  --glass:         rgba(12,10,22,.72);
+  --glass-border:  rgba(255,255,255,.06);
+  --glass-top:     rgba(255,255,255,.10);
+
+  /* Crimson */
+  --crimson-900: #2a050f;
+  --crimson-700: #5a0e2a;
+  --crimson-500: #8c1a48;
+  --crimson-300: #c43060;
+  --crimson-100: #e8608a;
+
+  /* Gold */
+  --gold-900: #3a2d14;
+  --gold-700: #7a6238;
+  --gold-500: #c9a86c;
+  --gold-300: #e8c870;
+  --gold-100: #f5e4b0;
+
+  /* Text */
+  --text:       #ede5d8;
+  --text-dim:   #9a8e80;
+  --text-ghost: #3a3028;
+
+  /* Borders */
+  --border:     rgba(200,160,110,.15);
+
+  /* Glow helpers */
+  --glow-crimson: 0 0 60px rgba(196,48,96,.35);
+  --glow-gold:    0 0 60px rgba(201,168,108,.35);
+
+  /* Grain */
+  --grain-opacity: .035;
+
+  /* Transitions */
+  --ease-fast:      150ms cubic-bezier(.4,0,.2,1);
+  --ease-mid:       350ms cubic-bezier(.4,0,.2,1);
+  --ease-slow:      700ms cubic-bezier(.4,0,.2,1);
+  --ease-cinematic: 1200ms cubic-bezier(.22,1,.36,1);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 18px;
+  line-height: 1.75;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────────── */
+.masthead-title {
+  font-family: 'Bodoni Moda', 'Playfair Display', Georgia, serif;
+  font-size: clamp(2.8rem, 8vw, 5rem);
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -.02em;
+  line-height: 1.05;
+  background: linear-gradient(135deg, #ede5d8 0%, #c9a86c 45%, #ede5d8 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmerText 7s linear infinite;
+}
+
+@keyframes shimmerText {
+  from { background-position: 0% center; }
+  to   { background-position: 200% center; }
+}
+
+.day-title {
+  font-family: 'Bodoni Moda', 'Playfair Display', Georgia, serif;
+  font-size: clamp(1.9rem, 5.5vw, 3.4rem);
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -.01em;
+  text-shadow:
+    0 0 80px rgba(196,48,96,.28),
+    0 0 120px rgba(196,48,96,.12);
+}
+
+.masthead-eyebrow {
+  font-family: 'Crimson Pro', serif;
+  font-size: .78rem;
+  letter-spacing: .45em;
+  text-transform: uppercase;
+  color: var(--gold-500);
+  opacity: .65;
+}
+
+.masthead-sub {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--text-dim);
+}
+
+.card-title {
+  font-family: 'Bodoni Moda', 'Playfair Display', serif;
+  font-size: 1.2rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--gold-500);
+  margin-bottom: 1rem;
+  letter-spacing: .02em;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--crimson-700); border-radius: 2px; }
+
+/* ── Typewriter cursor ──────────────────────────────────────────────────────── */
+.tw-cursor {
+  display: inline-block;
+  width: 2px;
+  background: var(--gold-500);
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  animation: twBlink .9s step-end infinite;
+}
+@keyframes twBlink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}

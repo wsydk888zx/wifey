@@ -1,0 +1,170 @@
+/* ── LAYOUT: Screens, app shell, masthead, day nav ──────────────────────────── */
+#bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: .45; }
+
+#app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem 6rem;
+}
+
+.screen { width: 100%; max-width: 760px; display: none; }
+.screen.active { display: block; animation: fadeUp .7s ease both; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Masthead ────────────────────────────────────────────────────────────────── */
+.masthead { text-align: center; padding: 3.5rem 0 2rem; }
+.masthead-sub { margin-top: .4rem; }
+
+/* ── Day navigation pips ────────────────────────────────────────────────────── */
+.day-nav {
+  display: flex;
+  gap: .65rem;
+  justify-content: center;
+  margin-bottom: 3rem;
+  flex-wrap: wrap;
+}
+
+.day-pip {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Crimson Pro', serif;
+  font-size: .8rem;
+  color: var(--text-ghost);
+  cursor: default;
+  transition: all .3s;
+  position: relative;
+}
+.day-pip.done   { border-color: var(--gold-700); color: var(--gold-700); }
+.day-pip.active {
+  border-color: var(--crimson-300);
+  color: var(--crimson-300);
+  box-shadow: 0 0 14px rgba(196,48,96,.3);
+  cursor: pointer;
+}
+.day-pip.locked::after {
+  content: '🔒';
+  font-size: .5rem;
+  position: absolute;
+  top: -4px; right: -4px;
+  background: var(--bg);
+  border-radius: 50%;
+  padding: 1px;
+}
+
+/* ── Chapter area wrapper ───────────────────────────────────────────────────── */
+.chapter-area-wrap { position: relative; }
+
+#chapter-area { position: relative; }
+
+/* Cinematic day transition */
+.day-transitioning {
+  animation: dayChange 1.1s var(--ease-cinematic) forwards;
+}
+@keyframes dayChange {
+  0%   { opacity: 1; filter: brightness(1); }
+  18%  { opacity: 0; filter: brightness(1.8) blur(2px); }
+  35%  { opacity: 0; filter: brightness(0); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+
+/* ── Skip button ─────────────────────────────────────────────────────────────── */
+.skip-btn {
+  position: absolute;
+  top: -.4rem; right: 0;
+  font-family: 'Crimson Pro', serif;
+  font-size: .72rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--text-ghost);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: .3rem .6rem;
+  transition: color var(--ease-fast);
+}
+.skip-btn:hover { color: var(--gold-700); }
+
+/* ── Countdown ──────────────────────────────────────────────────────────────── */
+.countdown-wrap { text-align: center; padding: 3rem 1rem; }
+.countdown-label {
+  font-family: 'Crimson Pro', serif;
+  font-size: .75rem;
+  letter-spacing: .4em;
+  text-transform: uppercase;
+  color: var(--gold-700);
+  margin-bottom: 1.2rem;
+}
+.countdown-time {
+  font-family: 'Bodoni Moda', 'Playfair Display', serif;
+  font-size: 3rem;
+  font-weight: 300;
+  color: var(--crimson-300);
+  letter-spacing: .1em;
+  text-shadow: var(--glow-crimson);
+}
+.countdown-msg { margin-top: 1.2rem; font-style: italic; color: var(--text-dim); font-size: 1rem; }
+
+/* ── Ornament ───────────────────────────────────────────────────────────────── */
+.ornament {
+  text-align: center;
+  color: var(--gold-500);
+  opacity: .4;
+  letter-spacing: .3em;
+  font-size: .75rem;
+  margin: 2rem 0;
+  user-select: none;
+}
+
+/* ── Day header ─────────────────────────────────────────────────────────────── */
+.day-header { text-align: center; margin-bottom: 2.5rem; }
+.day-number {
+  font-family: 'Crimson Pro', serif;
+  font-size: .72rem;
+  letter-spacing: .55em;
+  text-transform: uppercase;
+  color: var(--gold-700);
+}
+.day-subtitle { font-style: italic; color: var(--text-dim); font-size: 1rem; }
+
+/* ── Ending ─────────────────────────────────────────────────────────────────── */
+.ending-glow { text-align: center; padding: 2rem 0; }
+.ending-glow .big {
+  font-family: 'Bodoni Moda', 'Playfair Display', serif;
+  font-size: 2.4rem;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--gold-500);
+  text-shadow: var(--glow-gold);
+  margin-bottom: 1rem;
+}
+
+/* ── Closing card ───────────────────────────────────────────────────────────── */
+.closing-card {
+  text-align: center;
+  background: rgba(140,26,72,.06) !important;
+}
+
+/* ── Fade overlay ───────────────────────────────────────────────────────────── */
+#fade {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .5s;
+}
+#fade.show { opacity: 1; }
+
+@media (max-width: 520px) {
+  #app { padding: 1.5rem .75rem 5rem; }
+  .masthead { padding: 2.5rem 0 1.5rem; }
+}

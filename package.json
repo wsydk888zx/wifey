@@ -1,0 +1,21 @@
+{
+  "name": "wifey-workspace",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "preview": "node server.js",
+    "legacy:preview": "node server.js",
+    "player:dev": "npm run dev --workspace @wifey/player",
+    "player:build": "npm run build --workspace @wifey/player",
+    "admin:dev": "npm run dev --workspace @wifey/admin",
+    "admin:build": "npm run build --workspace @wifey/admin",
+    "validate:content": "node scripts/validate-content.mjs",
+    "verify": "npm run validate:content && npm run build --workspace @wifey/admin -- --outDir /tmp/wifey-admin-build --emptyOutDir && npm run build --workspace @wifey/player -- --outDir /tmp/wifey-player-build --emptyOutDir"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0"
+  }
+}

@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head><title>Cache Clear</title></head>
+<body>
+<script>
+localStorage.clear();
+sessionStorage.clear();
+if (window.caches) {
+  caches.keys().then(names => {
+    names.forEach(name => caches.delete(name));
+  });
+}
+document.body.innerHTML = '<h1>Cache cleared. Redirecting...</h1>';
+setTimeout(() => window.location.href = '/', 2000);
+</script>
+</body>
+</html>

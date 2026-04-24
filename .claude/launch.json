@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wifey",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "serve", "."],
+      "port": 8787,
+      "autoPort": false
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+/* ── EFFECTS: Film grain, magnetic cursor, floating controls ─────────────────── */
+
+/* ── Film grain ──────────────────────────────────────────────────────────────── */
+#grain {
+  position: fixed;
+  inset: -50%;
+  width: 200%; height: 200%;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  animation: grainShift .15s steps(1) infinite;
+}
+@keyframes grainShift {
+  0%   { transform: translate(0,0); }
+  10%  { transform: translate(-3%,-4%); }
+  20%  { transform: translate(-6%,2%); }
+  30%  { transform: translate(2%,-3%); }
+  40%  { transform: translate(-2%,6%); }
+  50%  { transform: translate(-4%,2%); }
+  60%  { transform: translate(5%,-1%); }
+  70%  { transform: translate(-1%,4%); }
+  80%  { transform: translate(3%,-5%); }
+  90%  { transform: translate(-4%,1%); }
+  100% { transform: translate(2%,3%); }
+}
+
+/* ── Magnetic cursor ─────────────────────────────────────────────────────────── */
+#cursor-dot {
+  position: fixed; top: 0; left: 0;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gold-500);
+  pointer-events: none;
+  z-index: 10000;
+  mix-blend-mode: difference;
+  transition: opacity .2s;
+  will-change: transform;
+}
+
+#cursor-blob {
+  position: fixed; top: 0; left: 0;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,108,.35);
+  pointer-events: none;
+  z-index: 9999;
+  transition: width .3s ease, height .3s ease,
+              top .3s ease, left .3s ease,
+              border-color .3s ease, background .3s ease;
+  will-change: transform;
+}
+#cursor-blob.expanded {
+  width: 64px; height: 64px;
+  border-color: var(--crimson-300);
+  background: rgba(196,48,96,.05);
+}
+#cursor-blob.pressed {
+  width: 32px; height: 32px;
+  background: rgba(201,168,108,.08);
+}
+
+/* ── Floating controls ───────────────────────────────────────────────────────── */
+#float-controls {
+  position: fixed;
+  right: 1.2rem; bottom: 2rem;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+}
+
+.float-btn {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  border: 1px solid rgba(201,168,108,.2);
+  background: rgba(12,10,22,.8);
+  color: var(--gold-700);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(8px);
+  transition: border-color var(--ease-mid), color var(--ease-mid), box-shadow var(--ease-mid);
+}
+.float-btn:hover {
+  border-color: var(--gold-500);
+  color: var(--gold-300);
+  box-shadow: 0 0 16px rgba(201,168,108,.2);
+}
+.float-btn.active { color: var(--gold-300); border-color: var(--gold-500); }
+
+/* ── Presence dot ────────────────────────────────────────────────────────────── */
+#presence-dot {
+  position: fixed;
+  top: 1.2rem; left: 1.2rem;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+  z-index: 500;
+  transition: background 1.2s ease, box-shadow 1.2s ease;
+  cursor: default;
+}
+#presence-dot.watching {
+  background: var(--crimson-300);
+  animation: presencePulse 2.8s ease-in-out infinite;
+}
+#presence-dot.triggered {
+  animation: presenceBurst .7s ease forwards !important;
+}
+@keyframes presencePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196,48,96,.5); }
+  50%       { box-shadow: 0 0 0 8px rgba(196,48,96,0); }
+}
+@keyframes presenceBurst {
+  0%   { transform: scale(1);   box-shadow: 0 0 0 0   rgba(196,48,96,.9); }
+  50%  { transform: scale(2.8); box-shadow: 0 0 0 14px rgba(196,48,96,.2); }
+  100% { transform: scale(1);   box-shadow: 0 0 0 22px rgba(196,48,96,0); }
+}
+
+/* ── Read receipt ────────────────────────────────────────────────────────────── */
+.read-receipt {
+  position: fixed;
+  bottom: 5.5rem; right: 1.6rem;
+  font-family: 'Crimson Pro', serif;
+  font-size: .7rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--gold-500);
+  opacity: 0;
+  z-index: 900;
+  pointer-events: none;
+}
+
+/* ── Admin button ────────────────────────────────────────────────────────────── */
+#admin-btn {
+  position: fixed;
+  bottom: 1rem; right: 1rem;
+  z-index: 100;
+  opacity: .1;
+  cursor: pointer;
+  font-size: .6rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--gold-700);
+  border: 1px solid var(--gold-700);
+  padding: .3rem .7rem;
+  border-radius: 2px;
+  font-family: 'Crimson Pro', serif;
+  transition: opacity .3s;
+  background: transparent;
+}
+#admin-btn:hover { opacity: .6; }
