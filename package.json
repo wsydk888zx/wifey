@@ -13,7 +13,8 @@
     "admin:dev": "npm run dev --workspace @wifey/admin",
     "admin:build": "npm run build --workspace @wifey/admin",
     "validate:content": "node scripts/validate-content.mjs",
-    "verify": "npm run validate:content && npm run build --workspace @wifey/admin -- --outDir /tmp/wifey-admin-build --emptyOutDir && npm run build --workspace @wifey/player -- --outDir /tmp/wifey-player-build --emptyOutDir"
+    "test:core": "node --test packages/story-core/test/*.test.mjs",
+    "verify": "npm run validate:content && npm run test:core && npm run build --workspace @wifey/admin -- --outDir /tmp/wifey-admin-build --emptyOutDir && npm run build --workspace @wifey/player -- --outDir /tmp/wifey-player-build --emptyOutDir"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0"
