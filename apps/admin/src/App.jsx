@@ -889,10 +889,29 @@ function AdminApp({ session }) {
     (currentSnapshotRow ? 0 : 1);
   const canPublish = validation.errors.length === 0;
 
-  const handleSaveDraft = () => {
+  const publishDraftToSupabase = async (draftToPublish) => {
+    if (!supabase) return { error: 'No Supabase client' };
+    return supabase.from('story_content').upsert(
+      {
+        id: 'main',
+        content: draftToPublish.content,
+        flow_map: draftToPublish.flowMap || { rules: [] },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' },
+    );
+  };
+
+  const handleSaveDraft = async () => {
     saveAdminDraft(draft);
     setSavedFingerprint(createDraftFingerprint(draft));
-    setNotice({ tone: 'success', text: 'Draft saved to browser storage.' });
+    setNotice({ tone: 'success', text: 'Saving to Supabase…' });
+    const { error } = await publishDraftToSupabase(draft);
+    if (error) {
+      setNotice({ tone: 'warning', text: `Saved locally. Supabase sync failed: ${error.message}` });
+    } else {
+      setNotice({ tone: 'success', text: 'Draft saved to browser storage and Supabase.' });
+    }
   };
 
   const handleResetDraft = () => {
@@ -937,7 +956,7 @@ function AdminApp({ session }) {
     });
   };
 
-  const handlePublishSnapshotAndExport = () => {
+  const handlePublishSnapshotAndExport = async () => {
     if (!canPublish) {
       setNotice({ tone: 'error', text: `Release blocked: ${validation.errors[0]}` });
       return;
@@ -958,11 +977,15 @@ function AdminApp({ session }) {
     setSelectedSnapshotId(snapshot.id);
     setSnapshotName('');
     downloadAdminExport(createAdminExport(nextDraft), createReleaseFilename());
+
+    const { error: supabaseError } = await publishDraftToSupabase(nextDraft);
     setNotice({
-      tone: validation.warnings.length ? 'warning' : 'success',
-      text: validation.warnings.length
-        ? 'Release snapshot saved and JSON exported with validation warnings visible.'
-        : 'Release snapshot saved and JSON exported.',
+      tone: supabaseError ? 'warning' : validation.warnings.length ? 'warning' : 'success',
+      text: supabaseError
+        ? `Release exported locally. Supabase sync failed: ${supabaseError.message}`
+        : validation.warnings.length
+          ? 'Release snapshot saved, exported, and pushed to Supabase (with validation warnings).'
+          : 'Release snapshot saved, exported, and pushed to Supabase.',
     });
   };
 

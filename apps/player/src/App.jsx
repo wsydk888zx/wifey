@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+import { createClient } from '@supabase/supabase-js';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { defaultContent } from '@wifey/story-content';
 import {
@@ -15,6 +16,11 @@ import {
 import Envelope from './components/Envelope.jsx';
 import Prologue from './components/Prologue.jsx';
 import TaskCard from './components/TaskCard.jsx';
+
+const supabase =
+  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
+    ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
+    : null;
 
 function loadState() {
   try {
@@ -255,27 +261,36 @@ function ChoiceHistoryPanel({ entries, tweaks, open, onClose }) {
   return (
     <div className={`choice-history-panel ${open ? 'open' : ''}`}>
       <div className="choice-history-header">
-        <h4>Previous Choices</h4>
-        <button onClick={onClose} aria-label="Close choice history">
-          x
-        </button>
+        <span className="choice-history-title">Her choices</span>
+        <button onClick={onClose} aria-label="Close">&#x2715;</button>
       </div>
       <div className="choice-history-scroll">
         {!entries.length ? (
           <div className="choice-history-empty">
             No choices yet. They will appear here as she moves through the story.
           </div>
-        ) : null}
-        {entries.map((entry, index) => (
-          <div key={`${entry.id}-${index}`} className="choice-history-card">
-            <div className="choice-history-theme">{rp(entry.theme || '')}</div>
-            <div className="choice-history-label">{rp(entry.label || '')}</div>
-            <div className="choice-history-choice">{rp(entry.choiceTitle || '')}</div>
-            {entry.choiceHint ? (
-              <div className="choice-history-hint">{rp(entry.choiceHint)}</div>
-            ) : null}
+        ) : (
+          <div className="cht-timeline">
+            {entries.map((entry, index) => (
+              <div
+                key={`${entry.id}-${index}`}
+                className="cht-entry"
+                style={{ animationDelay: `${index * 55}ms` }}
+              >
+                <div className="cht-spine">
+                  <div className="cht-seal">{entry.sealMotif || index + 1}</div>
+                  {index < entries.length - 1 ? <div className="cht-cord" /> : null}
+                </div>
+                <div className="cht-body">
+                  {entry.theme ? <div className="cht-theme">{rp(entry.theme)}</div> : null}
+                  <div className="cht-label">{rp(entry.label || '')}</div>
+                  <div className="cht-choice">{rp(entry.choiceTitle || '')}</div>
+                  {entry.choiceHint ? <div className="cht-hint">{rp(entry.choiceHint)}</div> : null}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -325,8 +340,31 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
 
 function App() {
   const persistedState = useMemo(() => loadState(), []);
-  const content = useMemo(() => normalizeContentModel(defaultContent), []);
-  const days = content.days || [];
+  const [content, setContent] = useState(null);
+  const [contentLoading, setContentLoading] = useState(true);
+
+  useEffect(() => {
+    if (!supabase) {
+      setContent(normalizeContentModel(defaultContent));
+      setContentLoading(false);
+      return;
+    }
+    supabase
+      .from('story_content')
+      .select('content, flow_map')
+      .eq('id', 'main')
+      .single()
+      .then(({ data, error }) => {
+        if (data && !error) {
+          setContent(normalizeContentModel(data.content));
+        } else {
+          setContent(normalizeContentModel(defaultContent));
+        }
+        setContentLoading(false);
+      });
+  }, []);
+
+  const days = content?.days || [];
 
   const [tweaks] = useState(() => ({
     ...TWEAK_DEFAULTS,
@@ -414,6 +452,7 @@ function App() {
             id: item.envelope.id,
             label: envelopeDisplay.get(item.envelope.id)?.label || item.envelope.label,
             theme: item.day?.theme,
+            sealMotif: item.envelope.sealMotif,
             choiceTitle: selectedChoice?.title || 'Completed',
             choiceHint: selectedChoice?.hint || '',
           };
@@ -446,6 +485,23 @@ function App() {
     textPrompts,
     selectedChoices,
   ]);
+
+  const syncedResponses = useRef({});
+  useEffect(() => {
+    if (!supabase) return;
+    const pending = Object.entries(formResponses).filter(
+      ([key, val]) => syncedResponses.current[key] !== JSON.stringify(val),
+    );
+    if (pending.length === 0) return;
+    pending.forEach(([key, val]) => {
+      const [envelope_id, choice_id] = key.split('::');
+      if (!envelope_id || !choice_id) return;
+      supabase
+        .from('player_responses')
+        .upsert({ envelope_id, choice_id, responses: val }, { onConflict: 'envelope_id,choice_id' })
+        .then(() => { syncedResponses.current[key] = JSON.stringify(val); });
+    });
+  }, [formResponses]);
 
   const current = flattened[idx] || null;
   const isDone = idx >= flattened.length;
@@ -611,6 +667,21 @@ function App() {
       return next;
     });
   };
+
+  if (contentLoading) {
+    return (
+      <div className="app">
+        <div className="desk">
+          <div className="main">
+            <div className="locked">
+              <div className="eye">O</div>
+              <p style={{ fontFamily: 'var(--serif)', color: 'var(--brass)' }}>Loading…</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showPrologue) {
     return (
