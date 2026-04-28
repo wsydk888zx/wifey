@@ -657,6 +657,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
               </div>
               <Envelope
                 envelope={{ ...env, label: envDisplay?.label || env.label }}
+                addressee={tweaks.herName}
                 tweaks={tweaks}
                 state={envState}
                 onOpen={handleOpenEnvelope}
@@ -704,6 +705,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
                 label: envDisplay?.label || env.label,
                 timeLabel: envDisplay?.timeLabel || env.timeLabel,
               }}
+              addressee={tweaks.herName}
               tweaks={tweaks}
               completed={completedIdx.has(idx)}
               onComplete={handleComplete}
