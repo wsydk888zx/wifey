@@ -75,11 +75,6 @@ function Envelope({ envelope, addressee, tweaks, state, onOpen }) {
         </div>
       </div>
 
-      {state === 'resting' ? (
-        <div className="envelope-hint">
-          Break the seal when you are ready <span className="key">Enter</span>
-        </div>
-      ) : null}
     </div>
   );
 }
