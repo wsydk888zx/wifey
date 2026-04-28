@@ -1,10 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { createClient } from '@supabase/supabase-js';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { defaultContent } from '@wifey/story-content';
 import {
-  STORAGE_KEYS,
   TWEAK_DEFAULTS,
   buildCompleteFlowMap,
   getDayEnvelopes,
@@ -22,34 +21,27 @@ const supabase =
     ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
     : null;
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.state);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+// ── Supabase state persistence ────────────────────────────────────────────────
+
+async function fetchRemoteState() {
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from('player_state')
+    .select('state')
+    .eq('id', 'main')
+    .single();
+  return data?.state ?? null;
 }
 
-function saveState(state) {
-  try {
-    localStorage.setItem(STORAGE_KEYS.state, JSON.stringify(state));
-  } catch {}
+function saveRemoteState(state) {
+  if (!supabase) return;
+  supabase
+    .from('player_state')
+    .upsert({ id: 'main', state, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+    .then(() => {});
 }
 
-function readFlowMap(content) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.flow);
-    if (!raw) {
-      return buildCompleteFlowMap(content, content.defaultFlowMap || { rules: [] });
-    }
-
-    return buildCompleteFlowMap(content, JSON.parse(raw));
-  } catch {
-    return buildCompleteFlowMap(content, content.defaultFlowMap || { rules: [] });
-  }
-}
+// ── Story helpers ─────────────────────────────────────────────────────────────
 
 function getDayId(day, index) {
   return day?.id || `day-${index + 1}`;
@@ -61,13 +53,9 @@ function isBranchOnlyEnvelope(day, envelope) {
 
 function flattenDays(days) {
   const items = [];
-
   days.forEach((day, dayIndex) => {
-    const envelopes = getDayEnvelopes(day);
-
-    envelopes.forEach((envelope, envelopeIndex) => {
+    getDayEnvelopes(day).forEach((envelope, envelopeIndex) => {
       if (!envelope) return;
-
       items.push({
         index: items.length,
         dayIndex,
@@ -82,7 +70,6 @@ function flattenDays(days) {
       });
     });
   });
-
   return items;
 }
 
@@ -107,28 +94,23 @@ function matchesBranchRule(rule, responses) {
   if (rule.operator === 'is_filled') {
     return Array.isArray(normalized) ? normalized.length > 0 : !!normalized;
   }
-
   if (rule.operator === 'equals') {
     if (Array.isArray(normalized)) return normalized.includes(expected);
     return normalized === expected;
   }
-
   if (rule.operator === 'contains') {
     if (Array.isArray(normalized)) {
       const expectedLower = expected.toLowerCase();
       return normalized.some((item) => item.toLowerCase().includes(expectedLower));
     }
-
     return !!normalized && normalized.toLowerCase().includes(expected.toLowerCase());
   }
-
   return false;
 }
 
 function buildSmsHref(recipient, body) {
   const phone = encodeURIComponent(recipient || '');
   const text = encodeURIComponent(body || '');
-
   if (phone && text) return `sms:${phone}&body=${text}`;
   if (phone) return `sms:${phone}`;
   if (text) return `sms:?body=${text}`;
@@ -146,14 +128,12 @@ function createNotificationId() {
 async function sendTextPromptNotification(prompt) {
   try {
     const permissionStatus = await LocalNotifications.checkPermissions();
-
     if (permissionStatus.display === 'prompt') {
-      const requestedStatus = await LocalNotifications.requestPermissions();
-      if (requestedStatus.display !== 'granted') return;
+      const requested = await LocalNotifications.requestPermissions();
+      if (requested.display !== 'granted') return;
     } else if (permissionStatus.display !== 'granted') {
       return;
     }
-
     await LocalNotifications.schedule({
       notifications: [
         {
@@ -161,56 +141,23 @@ async function sendTextPromptNotification(prompt) {
           title: 'Text her now',
           body: prompt.message,
           largeBody: prompt.message,
-          extra: {
-            choiceId: prompt.choiceId,
-            envelopeId: prompt.envelopeId,
-            promptId: prompt.id,
-          },
+          extra: { choiceId: prompt.choiceId, envelopeId: prompt.envelopeId, promptId: prompt.id },
         },
       ],
     });
   } catch {}
 }
 
-function WatchIndicator() {
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(intervalId);
-  }, []);
-
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-
-  return (
-    <div className="watch-indicator" title="Observed live">
-      <div className="dot" />
-      <span>Observed</span>
-      <span className="rec-time">
-        {hh}:{mm}
-      </span>
-    </div>
-  );
-}
+// ── UI components ─────────────────────────────────────────────────────────────
 
 function TextPromptTray({ prompts, setPrompts }) {
   if (!prompts?.length) return null;
-
-  const pending = prompts.filter((prompt) => prompt.status !== 'done');
+  const pending = prompts.filter((p) => p.status !== 'done');
   if (!pending.length) return null;
-
   const latest = pending[0];
-
-  const markDone = (id) => {
-    setPrompts((prev) =>
-      prev.map((prompt) => (prompt.id === id ? { ...prompt, status: 'done' } : prompt)),
-    );
-  };
-
-  const clearDone = () => {
-    setPrompts((prev) => prev.filter((prompt) => prompt.status !== 'done'));
-  };
+  const markDone = (id) =>
+    setPrompts((prev) => prev.map((p) => (p.id === id ? { ...p, status: 'done' } : p)));
+  const clearDone = () => setPrompts((prev) => prev.filter((p) => p.status !== 'done'));
 
   return (
     <div className="text-prompt-tray">
@@ -225,12 +172,8 @@ function TextPromptTray({ prompts, setPrompts }) {
         <a className="primary" href={buildSmsHref(latest.recipient, latest.message)}>
           Open in Messages
         </a>
-        <button className="secondary" onClick={() => markDone(latest.id)}>
-          Mark sent
-        </button>
-        <button className="secondary" onClick={clearDone}>
-          Clear sent
-        </button>
+        <button className="secondary" onClick={() => markDone(latest.id)}>Mark sent</button>
+        <button className="secondary" onClick={clearDone}>Clear sent</button>
       </div>
     </div>
   );
@@ -241,9 +184,7 @@ function TopBar({ onHistory }) {
     <div className="top-bar">
       <div className="top-right">
         {onHistory ? (
-          <button className="top-btn" onClick={onHistory}>
-            Choices
-          </button>
+          <button className="top-btn" onClick={onHistory}>Choices</button>
         ) : null}
       </div>
     </div>
@@ -252,7 +193,6 @@ function TopBar({ onHistory }) {
 
 function ChoiceHistoryPanel({ entries, tweaks, open, onClose }) {
   const rp = (text) => replacePlaceholders(text, tweaks);
-
   return (
     <div className={`choice-history-panel ${open ? 'open' : ''}`}>
       <div className="choice-history-header">
@@ -333,65 +273,79 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
   );
 }
 
-function App() {
-  const persistedState = useMemo(() => loadState(), []);
-  const [content, setContent] = useState(null);
-  const [contentLoading, setContentLoading] = useState(true);
-  const [remoteTweaks, setRemoteTweaks] = useState(null);
+// ── Loading screen ────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!supabase) {
-      setContent(normalizeContentModel(defaultContent));
-      setContentLoading(false);
-      return;
-    }
-    supabase
-      .from('story_content')
-      .select('content, flow_map')
-      .eq('id', 'main')
-      .single()
-      .then(({ data, error }) => {
-        if (data && !error) {
-          const { tweaks: embedded, ...storyOnly } = data.content;
-          setContent(normalizeContentModel(storyOnly));
-          if (embedded) setRemoteTweaks(embedded);
-        } else {
-          setContent(normalizeContentModel(defaultContent));
-        }
-        setContentLoading(false);
-      });
-  }, []);
+function LoadingScreen() {
+  return (
+    <div className="app">
+      <div className="desk">
+        <div className="main">
+          <div className="locked">
+            <div className="eye">O</div>
+            <p style={{ fontFamily: 'var(--serif)', color: 'var(--brass)' }}>Loading…</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
+// ── Player app (receives pre-loaded data as props) ────────────────────────────
+
+function PlayerApp({ content, tweaks, flowMap, initialState }) {
   const days = content?.days || [];
+  const flattened = useMemo(() => flattenDays(days), [days]);
 
-  const [tweaks] = useState(() => ({
-    ...TWEAK_DEFAULTS,
-    ...(persistedState?.tweaks || {}),
-  }));
-
-  const effectiveTweaks = remoteTweaks
-    ? { ...TWEAK_DEFAULTS, ...remoteTweaks, ...tweaks }
-    : tweaks;
-  const [showPrologue, setShowPrologue] = useState(() => !persistedState?.started);
-  const [idx, setIdx] = useState(() => persistedState?.idx ?? 0);
-  const [envState, setEnvState] = useState(() => persistedState?.envState ?? 'resting');
-  const [chosen, setChosen] = useState(() => persistedState?.chosen ?? null);
+  const [showPrologue, setShowPrologue] = useState(() => !initialState?.started);
+  const [idx, setIdx] = useState(() => initialState?.idx ?? 0);
+  const [envState, setEnvState] = useState(() => initialState?.envState ?? 'resting');
+  const [chosen, setChosen] = useState(() => initialState?.chosen ?? null);
   const [completedIdx, setCompletedIdx] = useState(
-    () => new Set(persistedState?.completedIdx ?? []),
+    () => new Set(initialState?.completedIdx ?? []),
   );
-  const [formResponses, setFormResponses] = useState(
-    () => persistedState?.formResponses ?? {},
-  );
+  const [formResponses, setFormResponses] = useState(() => initialState?.formResponses ?? {});
   const [activatedDayIds, setActivatedDayIds] = useState(
-    () => new Set(persistedState?.activatedDayIds ?? []),
+    () => new Set(initialState?.activatedDayIds ?? []),
   );
-  const [textPrompts, setTextPrompts] = useState(() => persistedState?.textPrompts ?? []);
+  const [textPrompts, setTextPrompts] = useState(() => initialState?.textPrompts ?? []);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedChoices, setSelectedChoices] = useState(
-    () => persistedState?.selectedChoices ?? {},
+    () => initialState?.selectedChoices ?? {},
   );
 
-  const flattened = useMemo(() => flattenDays(days), [days]);
+  // Save all game state to Supabase on every change
+  useEffect(() => {
+    saveRemoteState({
+      started: !showPrologue,
+      idx,
+      envState,
+      chosen,
+      completedIdx: Array.from(completedIdx),
+      formResponses,
+      activatedDayIds: Array.from(activatedDayIds),
+      textPrompts,
+      selectedChoices,
+    });
+  }, [showPrologue, idx, envState, chosen, completedIdx, formResponses, activatedDayIds, textPrompts, selectedChoices]);
+
+  // Sync form responses to player_responses table for admin visibility
+  const syncedResponses = useRef({});
+  useEffect(() => {
+    if (!supabase) return;
+    const pending = Object.entries(formResponses).filter(
+      ([key, val]) => syncedResponses.current[key] !== JSON.stringify(val),
+    );
+    if (!pending.length) return;
+    pending.forEach(([key, val]) => {
+      const [envelope_id, choice_id] = key.split('::');
+      if (!envelope_id || !choice_id) return;
+      supabase
+        .from('player_responses')
+        .upsert({ envelope_id, choice_id, responses: val }, { onConflict: 'envelope_id,choice_id' })
+        .then(() => { syncedResponses.current[key] = JSON.stringify(val); });
+    });
+  }, [formResponses]);
+
   const visibleDayIndexes = useMemo(
     () =>
       days
@@ -405,12 +359,12 @@ function App() {
     [days, flattened, activatedDayIds],
   );
   const visibleDayCount = visibleDayIndexes.length;
+
   const envelopeDisplay = useMemo(() => {
     const dayOrderMap = new Map(
       visibleDayIndexes.map((dayIndex, displayIndex) => [dayIndex, displayIndex + 1]),
     );
     const activeByDay = new Map();
-
     flattened.forEach((item) => {
       if (!isEnvelopeActive(item, activatedDayIds)) return;
       if (!activeByDay.has(item.dayIndex)) activeByDay.set(item.dayIndex, []);
@@ -418,7 +372,6 @@ function App() {
     });
 
     const displayMap = new Map();
-
     flattened.forEach((item) => {
       const visibleDayNumber = dayOrderMap.get(item.dayIndex) || item.dayIndex + 1;
       const activeEnvelopes = activeByDay.get(item.dayIndex) || [];
@@ -437,9 +390,9 @@ function App() {
         label: `Day ${toRoman(visibleDayNumber)} · ${timeLabel}`,
       });
     });
-
     return displayMap;
   }, [flattened, visibleDayIndexes, activatedDayIds]);
+
   const historyEntries = useMemo(
     () =>
       flattened
@@ -449,7 +402,6 @@ function App() {
             item.envelope?.choices?.find(
               (choice) => choice.id === selectedChoices[item.envelope.id],
             ) || null;
-
           return {
             id: item.envelope.id,
             label: envelopeDisplay.get(item.envelope.id)?.label || item.envelope.label,
@@ -461,49 +413,6 @@ function App() {
         }),
     [flattened, completedIdx, selectedChoices, envelopeDisplay],
   );
-
-  useEffect(() => {
-    saveState({
-      tweaks,
-      started: !showPrologue,
-      idx,
-      envState,
-      chosen,
-      completedIdx: Array.from(completedIdx),
-      formResponses,
-      activatedDayIds: Array.from(activatedDayIds),
-      textPrompts,
-      selectedChoices,
-    });
-  }, [
-    tweaks,
-    showPrologue,
-    idx,
-    envState,
-    chosen,
-    completedIdx,
-    formResponses,
-    activatedDayIds,
-    textPrompts,
-    selectedChoices,
-  ]);
-
-  const syncedResponses = useRef({});
-  useEffect(() => {
-    if (!supabase) return;
-    const pending = Object.entries(formResponses).filter(
-      ([key, val]) => syncedResponses.current[key] !== JSON.stringify(val),
-    );
-    if (pending.length === 0) return;
-    pending.forEach(([key, val]) => {
-      const [envelope_id, choice_id] = key.split('::');
-      if (!envelope_id || !choice_id) return;
-      supabase
-        .from('player_responses')
-        .upsert({ envelope_id, choice_id, responses: val }, { onConflict: 'envelope_id,choice_id' })
-        .then(() => { syncedResponses.current[key] = JSON.stringify(val); });
-    });
-  }, [formResponses]);
 
   const current = flattened[idx] || null;
   const isDone = idx >= flattened.length;
@@ -527,7 +436,6 @@ function App() {
     if (current && isEnvelopeActive(current, activatedDayIds)) return;
 
     const nextVisible = flattened.find((item) => isEnvelopeActive(item, activatedDayIds));
-
     if (nextVisible) {
       setIdx(nextVisible.index);
       setEnvState('resting');
@@ -540,7 +448,7 @@ function App() {
   const chosenChoice = env?.choices?.find((choice) => choice.id === chosen) || null;
   const responseKey = chosenChoice ? `${env.id}::${chosenChoice.id}` : null;
   const currentResponses = responseKey ? formResponses[responseKey] || {} : {};
-  const rp = (text) => replacePlaceholders(text, effectiveTweaks);
+  const rp = useCallback((text) => replacePlaceholders(text, tweaks), [tweaks]);
 
   const handleOpenEnvelope = () => {
     if (envState !== 'resting') return;
@@ -548,19 +456,12 @@ function App() {
     window.setTimeout(() => setEnvState('opened'), 1200);
   };
 
-  const handleChoose = (choiceId) => {
-    setChosen(choiceId);
-  };
-
-  const handleReselect = () => {
-    setChosen(null);
-  };
+  const handleChoose = (choiceId) => setChosen(choiceId);
+  const handleReselect = () => setChosen(null);
 
   const queueTextPrompt = (prompt) => {
     setTextPrompts((prev) => [prompt, ...prev]);
-
     void sendTextPromptNotification(prompt);
-
     const webhookUrl = tweaks.shortcutWebhookUrl?.trim();
     if (webhookUrl) {
       fetch(webhookUrl, {
@@ -575,11 +476,9 @@ function App() {
     if (!env || !chosenChoice) return;
 
     const textConfig = chosenChoice.card?.realText;
-
     if (textConfig?.enabled) {
       const message = rp(textConfig.message || '').trim();
       const recipient = (textConfig.recipient || tweaks.recipientPhone || '').trim();
-
       if (message) {
         queueTextPrompt({
           id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -595,7 +494,6 @@ function App() {
     }
 
     const nextState = (() => {
-      const flowMap = readFlowMap(content);
       const rules = Array.isArray(flowMap?.rules) ? flowMap.rules : [];
       const matchingRule = rules.find((rule) => {
         if (rule.sourceChoiceId !== chosenChoice.id) return false;
@@ -607,28 +505,18 @@ function App() {
         const targetItem = flattened.find(
           (item) => item.envelopeId === matchingRule.targetEnvelopeId,
         );
-
         if (targetItem) {
           activated.add(targetItem.dayId);
           activated.add(targetItem.envelopeId);
           if (targetItem.branchGroup) activated.add(targetItem.branchGroup);
-
           return { nextIdx: targetItem.index, activated };
         }
       }
-
       return { nextIdx: flattened.length, activated };
     })();
 
-    setCompletedIdx((prev) => {
-      const next = new Set(prev);
-      next.add(idx);
-      return next;
-    });
-    setSelectedChoices((prev) => ({
-      ...prev,
-      [env.id]: chosenChoice.id,
-    }));
+    setCompletedIdx((prev) => { const next = new Set(prev); next.add(idx); return next; });
+    setSelectedChoices((prev) => ({ ...prev, [env.id]: chosenChoice.id }));
     setActivatedDayIds(nextState.activated);
 
     window.setTimeout(() => {
@@ -639,10 +527,7 @@ function App() {
   };
 
   const handleReset = () => {
-    if (!window.confirm('Reset all progress? All opened envelopes will be sealed again.')) {
-      return;
-    }
-
+    if (!window.confirm('Reset all progress? All opened envelopes will be sealed again.')) return;
     setIdx(0);
     setEnvState('resting');
     setChosen(null);
@@ -653,45 +538,25 @@ function App() {
     setSelectedChoices({});
     setHistoryOpen(false);
     setShowPrologue(true);
-
-    try {
-      localStorage.removeItem(STORAGE_KEYS.state);
-    } catch {}
+    // Wipe remote state too
+    saveRemoteState({});
   };
 
   const handleResponseChange = (key, value) => {
     if (!responseKey) return;
-
     setFormResponses((prev) => {
       const next = { ...prev };
-      const existing = next[responseKey] || {};
-      next[responseKey] = { ...existing, [key]: value };
+      next[responseKey] = { ...(next[responseKey] || {}), [key]: value };
       return next;
     });
   };
-
-  if (contentLoading) {
-    return (
-      <div className="app">
-        <div className="desk">
-          <div className="main">
-            <div className="locked">
-              <div className="eye">O</div>
-              <p style={{ fontFamily: 'var(--serif)', color: 'var(--brass)' }}>Loading…</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (showPrologue) {
     return (
       <div className="app">
         <Prologue
           prologue={content.prologue}
-
-          tweaks={effectiveTweaks}
+          tweaks={tweaks}
           dayCount={days.length}
           envelopeCount={flattened.length}
           onBegin={() => setShowPrologue(false)}
@@ -703,13 +568,10 @@ function App() {
   if (isDone) {
     return (
       <div className="app">
-        <TopBar
-
-          onHistory={() => setHistoryOpen((open) => !open)}
-        />
+        <TopBar onHistory={() => setHistoryOpen((open) => !open)} />
         <ChoiceHistoryPanel
           entries={historyEntries}
-          tweaks={effectiveTweaks}
+          tweaks={tweaks}
           open={historyOpen}
           onClose={() => setHistoryOpen(false)}
         />
@@ -720,24 +582,20 @@ function App() {
             currentIdx={flattened.length}
             completedIdx={completedIdx}
             activatedDayIds={activatedDayIds}
-            tweaks={effectiveTweaks}
+            tweaks={tweaks}
           />
           <div className="main main-finale">
             <div className="finale">
               <div className="kicker">The correspondence is complete</div>
               <h2>
-                {visibleDayCount} days.
-                <br />
-                {flattened.length} envelopes.
-                <br />
+                {visibleDayCount} days.<br />
+                {flattened.length} envelopes.<br />
                 All obeyed.
               </h2>
               <p>You were the best kind of good. Come find me.</p>
             </div>
             <div className="actions actions-centered">
-              <button className="secondary" onClick={handleReset}>
-                Seal everything again
-              </button>
+              <button className="secondary" onClick={handleReset}>Seal everything again</button>
             </div>
           </div>
         </div>
@@ -749,16 +607,7 @@ function App() {
   if (!env) {
     return (
       <div className="app">
-        <TopBar
-
-          onHistory={() => setHistoryOpen((open) => !open)}
-        />
-        <ChoiceHistoryPanel
-          entries={historyEntries}
-          tweaks={effectiveTweaks}
-          open={historyOpen}
-          onClose={() => setHistoryOpen(false)}
-        />
+        <TopBar onHistory={() => setHistoryOpen((open) => !open)} />
         <div className="desk">
           <div className="main">
             <div className="locked">
@@ -789,9 +638,8 @@ function App() {
           currentIdx={idx}
           completedIdx={completedIdx}
           activatedDayIds={activatedDayIds}
-          tweaks={effectiveTweaks}
+          tweaks={tweaks}
         />
-
         <div
           className={`main ${
             envState !== 'opened'
@@ -809,8 +657,7 @@ function App() {
               </div>
               <Envelope
                 envelope={{ ...env, label: envDisplay?.label || env.label }}
-      
-                tweaks={effectiveTweaks}
+                tweaks={tweaks}
                 state={envState}
                 onOpen={handleOpenEnvelope}
               />
@@ -829,7 +676,6 @@ function App() {
                   )}
                 </p>
               </div>
-
               <div className="choices-list">
                 {env.choices.map((choice, index) => (
                   <button
@@ -858,8 +704,7 @@ function App() {
                 label: envDisplay?.label || env.label,
                 timeLabel: envDisplay?.timeLabel || env.timeLabel,
               }}
-    
-              tweaks={effectiveTweaks}
+              tweaks={tweaks}
               completed={completedIdx.has(idx)}
               onComplete={handleComplete}
               onReselect={handleReselect}
@@ -870,9 +715,59 @@ function App() {
           ) : null}
         </div>
       </div>
-
       <TextPromptTray prompts={textPrompts} setPrompts={setTextPrompts} />
     </div>
+  );
+}
+
+// ── App loader — fetches content + state from Supabase, then mounts PlayerApp ─
+
+function App() {
+  const [ready, setReady] = useState(false);
+  const [content, setContent] = useState(null);
+  const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+  const [flowMap, setFlowMap] = useState({ rules: [] });
+  const [initialState, setInitialState] = useState(null);
+
+  useEffect(() => {
+    async function load() {
+      if (!supabase) {
+        setContent(normalizeContentModel(defaultContent));
+        setReady(true);
+        return;
+      }
+
+      const [contentResult, stateResult] = await Promise.all([
+        supabase.from('story_content').select('content, flow_map').eq('id', 'main').single(),
+        fetchRemoteState(),
+      ]);
+
+      if (contentResult.data && !contentResult.error) {
+        const { tweaks: embedded, ...storyOnly } = contentResult.data.content;
+        setContent(normalizeContentModel(storyOnly));
+        if (embedded) setTweaks({ ...TWEAK_DEFAULTS, ...embedded });
+        const rawFlowMap = contentResult.data.flow_map || storyOnly.defaultFlowMap || { rules: [] };
+        setFlowMap(buildCompleteFlowMap(storyOnly, rawFlowMap));
+      } else {
+        setContent(normalizeContentModel(defaultContent));
+      }
+
+      setInitialState(stateResult || {});
+      setReady(true);
+    }
+
+    load();
+  }, []);
+
+  if (!ready) return <LoadingScreen />;
+
+  return (
+    <PlayerApp
+      content={content}
+      tweaks={tweaks}
+      flowMap={flowMap}
+      initialState={initialState}
+    />
   );
 }
 
