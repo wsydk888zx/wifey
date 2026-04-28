@@ -8,10 +8,11 @@
   "scripts": {
     "preview": "node server.js",
     "legacy:preview": "node server.js",
-    "player:dev": "npm run dev --workspace @wifey/player",
+    "player:dev": "npm run dev --workspace @wifey/player -- --host 127.0.0.1 --port 5173",
     "player:build": "npm run build --workspace @wifey/player",
-    "admin:dev": "npm run dev --workspace @wifey/admin",
+    "admin:dev": "node scripts/dev-admin.mjs",
     "admin:build": "npm run build --workspace @wifey/admin",
+    "promote:content": "node scripts/promote-release-content.mjs",
     "validate:content": "node scripts/validate-content.mjs",
     "test:core": "node --test packages/story-core/test/*.test.mjs",
     "verify": "npm run validate:content && npm run test:core && npm run build --workspace @wifey/admin -- --outDir /tmp/wifey-admin-build --emptyOutDir && npm run build --workspace @wifey/player -- --outDir /tmp/wifey-player-build --emptyOutDir"

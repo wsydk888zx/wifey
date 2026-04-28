@@ -2,8 +2,6 @@ export const TWEAK_DEFAULTS = {
   herName: 'her',
   hisName: 'mine',
   intensity: 9,
-  recipientPhone: '',
-  shortcutWebhookUrl: '',
 };
 
 export const STORAGE_KEYS = {
@@ -11,4 +9,5 @@ export const STORAGE_KEYS = {
   flow: 'yoursWatching:flowMap:v2',
   content: 'yoursWatching:contentEdits:v2',
   snapshots: 'yoursWatching:snapshots:v1',
+  tweaks: 'yoursWatching:tweaks:v1',
 };

@@ -4,7 +4,11 @@ function Envelope({ envelope, addressee, tweaks, state, onOpen }) {
   // state: 'resting' | 'opening' | 'opened'
   const rp = (text) => window.replacePlaceholders ? window.replacePlaceholders(text, tweaks) : text;
   const handleClick = () => {
-    if (state === 'resting') onOpen();
+    if (state !== 'resting') return;
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      navigator.vibrate(12);
+    }
+    onOpen();
   };
 
   return (
@@ -23,8 +27,11 @@ function Envelope({ envelope, addressee, tweaks, state, onOpen }) {
         }}
         aria-label={state === 'resting' ? 'Open envelope' : 'Envelope'}
       >
+        <div className="envelope-shadow" />
+
         {/* Back body of envelope */}
         <div className="body">
+          <div className="paper-sheen" />
           <div className="monogram">{addressee ? addressee[0] : 'M'}</div>
           <div className="address">{addressee || 'Mine'}</div>
           <div className="sub">{rp(envelope.label)}</div>
@@ -34,23 +41,29 @@ function Envelope({ envelope, addressee, tweaks, state, onOpen }) {
         <div className="flap-left" />
         <div className="flap-right" />
         <div className="flap-bottom" />
+        <div className="inner-lining" />
 
         {/* Letter that rises when flap opens */}
         <div className="letter">
+          <div className="letter-warmth" />
           <div className="preview">
             <div className="preview-date">{rp(envelope.label)}</div>
             <div className="to">For {addressee || 'you'},</div>
-            <em>Break the seal when you are alone.</em>
+            <div className="preview-rule" />
+            <em>Open me slowly. I want the moment to last.</em>
           </div>
         </div>
 
         {/* Top flap — this is what opens */}
-        <div className="flap-top" />
+        <div className="flap-top">
+          <div className="flap-underside" />
+        </div>
 
         {/* Wax seal centered on flap tip */}
         <div className="wax-seal">
           <div className="half left" />
           <div className="half right" />
+          <div className="seal-shine" />
           <div className="motif">{envelope.sealMotif || (addressee ? addressee[0].toUpperCase() : 'M')}</div>
         </div>
       </div>

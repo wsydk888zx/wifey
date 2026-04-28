@@ -1,5 +1,23 @@
 import { TWEAK_DEFAULTS } from './constants.js';
 
+export const PLACEHOLDER_TOKEN_OPTIONS = [
+  { token: '{{herName}}', label: 'her name' },
+  { token: '{{hisName}}', label: 'his name' },
+  { token: '{{HerName}}', label: 'Her name' },
+  { token: '{{HisName}}', label: 'His name' },
+  { token: '{her}', label: 'legacy her' },
+  { token: '{his}', label: 'legacy his' },
+  { token: '{Her}', label: 'legacy Her' },
+  { token: '{His}', label: 'legacy His' },
+];
+
+const PLACEHOLDER_TOKEN_PATTERN =
+  /\{\{(?:herName|hisName|HerName|HisName)\}\}|\{(?:her|his|Her|His)\}/;
+
+export function hasPlaceholderTokens(text) {
+  return typeof text === 'string' && PLACEHOLDER_TOKEN_PATTERN.test(text);
+}
+
 export function replacePlaceholders(text, tweaks = {}) {
   if (typeof text !== 'string') return text;
 
@@ -18,4 +36,9 @@ export function replacePlaceholders(text, tweaks = {}) {
     .replaceAll('{His}', His)
     .replaceAll('{her}', her)
     .replaceAll('{his}', his);
+}
+
+export function previewPlaceholders(text, tweaks = {}) {
+  if (!hasPlaceholderTokens(text)) return null;
+  return replacePlaceholders(text, tweaks);
 }

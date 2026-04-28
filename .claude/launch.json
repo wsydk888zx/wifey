@@ -2,6 +2,20 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "admin:dev"],
+      "port": 5174,
+      "autoPort": false
+    },
+    {
+      "name": "player",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--workspace", "@wifey/player"],
+      "port": 5173,
+      "autoPort": false
+    },
+    {
       "name": "wifey",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["--yes", "serve", "."],

@@ -4,22 +4,33 @@
 
 A private interactive story experience ("Yours, Watching"). The recipient moves through days and envelopes, makes choices, and sees branching narrative.
 
-The project is migrating from a legacy root browser preview into a workspace:
+The project has two surfaces:
 
-- `apps/player`: target user-facing player app, built with Vite and Capacitor
-- `apps/admin`: target desktop/browser authoring surface, built with Vite
+- `apps/player`: user-facing player app, built with Vite and Capacitor — ships as an iOS native app
+- `apps/admin`: authoring surface, built with Vite — **hosted on Vercel**
 - `packages/story-core`: shared content model, flow, placeholder, and formatting logic
 - `packages/story-content`: bundled story content
 
-The root app is still a legacy fallback. Keep it working, but do not treat it as the long-term architecture. See `docs/dev-rules.md` and `docs/architecture.md` before changing structure.
+## Deployment
+
+| Surface | Runtime | Host |
+|---|---|---|
+| `apps/player` | iOS native (Capacitor) | Device |
+| `apps/admin` | Browser | Vercel |
+| Admin AI server (`apps/admin/server/server.js`) | Node.js | Local (author's machine) |
+| Player responses | Supabase `player_responses` table | Supabase (hosted) |
+
+**Admin and player are always on separate devices.** Never build features that assume shared browser storage or same-device access. Player responses flow through Supabase so they work on any network.
+
+The root app is a legacy player-only fallback. Do not treat it as the long-term architecture. See `docs/dev-rules.md` and `docs/architecture.md` before changing structure.
 
 ## File map — what is authoritative
 
 | File | Purpose |
 |---|---|
-| `content.js` | Legacy root story source (`window.GAME_CONTENT`) and temporary workspace content bridge |
+| `content.js` | Legacy root adapter exposing package story data to the root preview globals |
 | `App.jsx` | Legacy root React app, all state, routing between views |
-| `AdminPanel.jsx` | **The one legacy root admin panel.** Full content + flow editor. Do not replace or duplicate inside the root app. |
+| `AdminPanel.jsx` | Retired legacy root admin panel kept for historical reference only. Do not revive it as an authoring path. |
 | `apps/player` | Target player app |
 | `apps/admin` | Target admin app scaffold; migrate admin features here deliberately |
 | `packages/story-core` | Target home for shared runtime and content-model logic |
@@ -34,9 +45,11 @@ The root app is still a legacy fallback. Keep it working, but do not treat it as
 | `styles/panels.css` | Panel and overlay styles |
 | `server.js` | Node server — AI card-draft endpoint (`/api/card-draft`) |
 
-## AdminPanel.jsx — features that MUST all exist
+## AdminPanel.jsx — retired legacy reference
 
-The admin panel (`AdminPanel.jsx`) is the product of many sessions. It contains:
+The retired root admin panel (`AdminPanel.jsx`) was the product of many sessions. Its replacement is the workspace admin app in `apps/admin`. Do not route users back to the root admin fallback or create new root-level admin entry points.
+
+Historically, it contained:
 
 - **DayEditor** — edit day-level fields (theme, branchOnly flag)
 - **EnvelopeEditor** — edit per-envelope: intro, choicesHeading, choicesIntro, timeLabel, sealMotif, label, branchOnly
@@ -49,15 +62,17 @@ The admin panel (`AdminPanel.jsx`) is the product of many sessions. It contains:
 - `window.replacePlaceholders(text, tweaks)` — global placeholder replacement
 - `window.normalizeGameContent` / `window.getDayEnvelopes` / `window.buildCompleteFlowMap` — exported globals used by engine
 
-**Never remove any of these. Never replace AdminPanel.jsx with a new file — refactor it in place.**
+Do not edit or revive this file unless a scoped archival/removal task explicitly calls for it. Active admin work belongs in `apps/admin`.
 
 ## Rules for working on this project
 
+0. **Always work from a Markdown plan.** For every ask, either use an existing plan file (for example `docs/stabilization-plan.md`) or create/update a scoped `.md` plan before treating the work as underway. Do not rely on chat-only plans as the source of truth. As progress is made, update the plan file in the same turn so it reflects what is done, what is partial, and what remains next.
+
 1. **No greenfield rewrites of existing components.** When improving or redesigning something, edit the existing file. Creating a parallel replacement file causes feature loss and wiring confusion. This has happened before and caused serious regressions.
 
-2. **The admin panel is the most complex component.** Before touching AdminPanel.jsx, read its full feature list above and verify all features are preserved after any change.
+2. **The retired admin panel is complex.** Avoid touching `AdminPanel.jsx` unless the task is explicitly about archiving, deleting, or comparing the retired legacy admin.
 
-3. **One root admin panel while legacy preview exists.** `App.jsx` renders `AdminPanel` when `tweaksOpen` is true. Do not add another root-level admin system. The separate `apps/admin` workspace app is the migration target and must reach feature parity before the legacy root admin is retired.
+3. **No root admin panel.** `apps/admin` is the only supported authoring surface. Do not add a root-level admin fallback or wire `AdminPanel.jsx` back into `App.jsx`.
 
 4. **CSS files are in `styles/`.** Don't create new CSS files in the root. Don't create component-specific CSS files unless strictly necessary — prefer inline styles (AdminPanel uses the `S = {}` inline style object pattern) or additions to existing CSS files.
 
@@ -78,7 +93,7 @@ The admin panel (`AdminPanel.jsx`) is the product of many sessions. It contains:
 
 - **Choice-level AI** (`AIChoiceConfigurator`): inside each expanded choice in the Story tab. Calls `/api/card-draft`. Returns `{title, hint, heading, body, rule}`.
 - **Envelope-level AI** (`AIEnvelopePanel`): below each envelope in the Story tab. Calls `/api/envelope-draft`. Returns `{intro, choicesHeading, choicesIntro}`.
-- Both endpoints use `claude-haiku-4-5` with JSON schema output. Server must be running (`node server.js`) for AI to work.
+- Both endpoints use `claude-haiku-4-5` with JSON schema output. The workspace admin AI server must be running with `npm run ai:server --workspace @wifey/admin` for AI drafting to work.
 - Client-side fallback rewrite functions exist (`buildConfiguratorDraft`, `rewriteBodyText`, etc.) but are separate from the API calls.
 
 ## Flow map
@@ -93,6 +108,6 @@ The admin panel (`AdminPanel.jsx`) is the product of many sessions. It contains:
 - Dragging reduces opacity of the source envelope to 0.35. Drop target gets a gold left border highlight.
 - Cross-day reordering is NOT supported — only within the same day.
 
-## What the TopBar "Admin" button does
+## Root Preview
 
-In the legacy root preview, this opens `AdminPanel` via `setTweaksOpen(true)`. This is the only root admin entry point. There is no separate root "Story Editor" button - it was removed because it opened a broken, incomplete replacement.
+The legacy root preview is player-only. It no longer loads `AdminPanel.jsx`, and there is no supported `?legacyAdmin=1` fallback. Use `npm run admin:dev` for authoring and `npm run player:dev` for the workspace player.

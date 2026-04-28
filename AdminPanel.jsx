@@ -105,8 +105,20 @@ function getLegacyDayEnvelopes(day) {
 }
 
 function getDayEnvelopes(day) {
-  if (Array.isArray(day?.envelopes)) return day.envelopes;
-  return getLegacyDayEnvelopes(day);
+  const explicitEnvelopes = Array.isArray(day?.envelopes) ? day.envelopes.filter(Boolean) : [];
+  const legacyEnvelopes = getLegacyDayEnvelopes(day);
+  if (!explicitEnvelopes.length) return legacyEnvelopes;
+
+  const explicitKeys = new Set(
+    explicitEnvelopes.map((envelope) => envelope.id || envelope.slot || '').filter(Boolean)
+  );
+
+  const missingLegacyEnvelopes = legacyEnvelopes.filter((envelope) => {
+    const key = envelope.id || envelope.slot || '';
+    return !key || !explicitKeys.has(key);
+  });
+
+  return [...missingLegacyEnvelopes, ...explicitEnvelopes];
 }
 
 function normalizeEnvelope(envelope, dayNumber, envelopeIndex, inheritedBranchOnly = false, branchGroup = '') {
@@ -121,12 +133,24 @@ function normalizeEnvelope(envelope, dayNumber, envelopeIndex, inheritedBranchOn
   return next;
 }
 
+function normalizeDayPrelude(day, dayNumber) {
+  const next = deepClone(day?.dayPrelude || {});
+  return {
+    enabled: !!next.enabled,
+    kicker: next.kicker || `Day ${toRoman(dayNumber)}`,
+    heading: next.heading || `Before Day ${dayNumber} Begins`,
+    body: next.body || 'A brief, beautiful lead-in for this day. Use it to set mood, location, or emotional tension before the first envelope opens.',
+    buttonLabel: next.buttonLabel || 'Begin the day',
+  };
+}
+
 function normalizeContentModel(source) {
   const content = deepClone(source || window.GAME_CONTENT || {});
   const incomingDays = Array.isArray(content.days) ? content.days : [];
   const baseDays = incomingDays.slice(0, 5).map((day, index) => ({
     ...day,
     day: index + 1,
+    dayPrelude: normalizeDayPrelude(day, index + 1),
     envelopes: getDayEnvelopes(day).map((envelope, envelopeIndex) =>
       normalizeEnvelope(envelope, index + 1, envelopeIndex, !!day?.branchOnly)
     ),
@@ -174,9 +198,9 @@ function normalizeFlowMap(data) {
     const rules = [];
     Object.entries(data).forEach(([sourceChoiceId, targetIds]) => {
       if (!Array.isArray(targetIds)) return;
-      targetIds.forEach((targetEnvelopeId) => {
+      targetIds.forEach((targetEnvelopeId, index) => {
         rules.push({
-          id: makeRuleId(),
+          id: `legacy-${sourceChoiceId}-${targetEnvelopeId}-${index}`,
           sourceChoiceId,
           sourceFieldId: '',
           operator: 'always',
@@ -830,39 +854,6 @@ function ChoiceEditor({ choice, dayIndex, slotKey, choiceIndex, onUpdate, onRemo
             <Field label="Card — Rule / Footer" value={choice.card?.rule || ''} onChange={v => update('card.rule', v)} type="textarea" rows={3} tweaks={tweaks} />
 
             <div style={{ marginTop: 16, marginBottom: 8, color: 'rgba(201,169,97,0.4)', fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase' }}>
-              Real Text Prompt
-            </div>
-            <div style={S.field}>
-              <label style={S.label}>Requires real text from me</label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(237,227,209,0.7)', fontSize: 12 }}>
-                <input
-                  type="checkbox"
-                  checked={!!choice.card?.realText?.enabled}
-                  onChange={e => update('card.realText.enabled', e.target.checked)}
-                />
-                Queue a prompt for me to send a real text from my phone when this option is completed
-              </label>
-            </div>
-            {choice.card?.realText?.enabled && (
-              <>
-                <Field
-                  label="Text Message Body"
-                  value={choice.card?.realText?.message || ''}
-                  onChange={v => update('card.realText.message', v)}
-                  type="textarea"
-                  rows={4}
-                  tweaks={tweaks}
-                />
-                <Field
-                  label="Recipient Phone Override"
-                  value={choice.card?.realText?.recipient || ''}
-                  onChange={v => update('card.realText.recipient', v)}
-                  tweaks={tweaks}
-                />
-              </>
-            )}
-
-            <div style={{ marginTop: 16, marginBottom: 8, color: 'rgba(201,169,97,0.4)', fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase' }}>
               Response Fields ({inputs.length})
             </div>
 
@@ -984,11 +975,6 @@ function ChoiceEditor({ choice, dayIndex, slotKey, choiceIndex, onUpdate, onRemo
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
-              {choice.card?.realText?.enabled && (
-                <div style={{ marginTop: 14, padding: '10px 12px', border: '1px dashed rgba(74,13,21,0.28)', color: '#4a0d15', fontSize: 12, lineHeight: 1.6 }}>
-                  <strong>Real text prompt:</strong> {rp(choice.card?.realText?.message || 'Message preview')}
                 </div>
               )}
             </div>
@@ -2601,7 +2587,6 @@ function UnifiedStoryEditor({ content, setContent, onSave, tweaks, localEdits, s
                   const isOpen = expandedChoices.has(key);
                   const hasEdits = !!localEdits[key];
                   const choiceInputs = Array.isArray(choice.card?.inputs) ? choice.card.inputs : [];
-                  const realTextEnabled = !!choice.card?.realText?.enabled;
                   const resolvedTitle = get(key, 'title', choice.title);
                   const resolvedHint = get(key, 'hint', choice.hint);
                   const resolvedHeading = get(key, 'heading', choice.card?.heading);
@@ -2624,11 +2609,6 @@ function UnifiedStoryEditor({ content, setContent, onSave, tweaks, localEdits, s
                             <span style={{ padding: '2px 6px', border: '1px solid rgba(201,169,97,0.16)', borderRadius: 999, color: 'rgba(237,227,209,0.55)', fontSize: 10 }}>
                               {choiceInputs.length} field{choiceInputs.length !== 1 ? 's' : ''}
                             </span>
-                            {realTextEnabled && (
-                              <span style={{ padding: '2px 6px', border: '1px solid rgba(201,169,97,0.16)', borderRadius: 999, color: 'rgba(237,227,209,0.55)', fontSize: 10 }}>
-                                real text
-                              </span>
-                            )}
                           </div>
                           <div style={{ color: 'rgba(201,169,97,0.45)', fontSize: 11, fontStyle: 'italic', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
                             {resolvedRule || <span style={{ color: 'rgba(237,227,209,0.2)' }}>no rule</span>}
@@ -2662,7 +2642,7 @@ function UnifiedStoryEditor({ content, setContent, onSave, tweaks, localEdits, s
                                   <span>Card setup</span>
                                 </div>
                                 <div style={{ color: 'rgba(237,227,209,0.45)', fontSize: 11, lineHeight: 1.6 }}>
-                                  These controls are part of the card itself: choice ID, response fields, and real-world text prompts.
+                                  These controls are part of the card itself: choice ID and response fields.
                                 </div>
                               </div>
 
@@ -2677,41 +2657,6 @@ function UnifiedStoryEditor({ content, setContent, onSave, tweaks, localEdits, s
                                     onChange={v => updateChoiceDirect(di, envIndex, ci, 'id', v)}
                                     tweaks={tweaks}
                                   />
-                                </div>
-
-                                <div style={{ ...S.card, marginBottom: 10, background: 'rgba(255,255,255,0.02)' }}>
-                                  <div style={{ ...S.cardTitle, marginBottom: 10 }}>
-                                    <span>Real text prompt</span>
-                                  </div>
-                                  <div style={S.field}>
-                                    <label style={S.label}>Requires a real-world text from me</label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'rgba(237,227,209,0.7)', fontSize: 12 }}>
-                                      <input
-                                        type="checkbox"
-                                        checked={realTextEnabled}
-                                        onChange={e => updateChoiceDirect(di, envIndex, ci, 'card.realText.enabled', e.target.checked)}
-                                      />
-                                      Queue a text prompt when this choice is completed
-                                    </label>
-                                  </div>
-                                  {realTextEnabled && (
-                                    <>
-                                      <Field
-                                        label="Text message body"
-                                        value={choice.card?.realText?.message || ''}
-                                        onChange={v => updateChoiceDirect(di, envIndex, ci, 'card.realText.message', v)}
-                                        type="textarea"
-                                        rows={4}
-                                        tweaks={tweaks}
-                                      />
-                                      <Field
-                                        label="Recipient phone override"
-                                        value={choice.card?.realText?.recipient || ''}
-                                        onChange={v => updateChoiceDirect(di, envIndex, ci, 'card.realText.recipient', v)}
-                                        tweaks={tweaks}
-                                      />
-                                    </>
-                                  )}
                                 </div>
 
                                 <div style={{ ...S.card, marginBottom: 10, background: 'rgba(255,255,255,0.02)' }}>
@@ -2871,11 +2816,6 @@ function UnifiedStoryEditor({ content, setContent, onSave, tweaks, localEdits, s
                                     ))}
                                   </div>
                                 )}
-                                {realTextEnabled && (
-                                  <div style={{ marginTop: 14, padding: '10px 12px', border: '1px dashed rgba(74,13,21,0.28)', color: '#4a0d15', fontSize: 12, lineHeight: 1.6 }}>
-                                    <strong>Real text prompt:</strong> {rp(choice.card?.realText?.message || 'Message preview')}
-                                  </div>
-                                )}
                               </div>
                             </div>
                           </div>
@@ -2954,7 +2894,7 @@ function triggerDownload(data, filename) {
   a.click();
 }
 
-function getStoryStats(content, flowMap, textPrompts) {
+function getStoryStats(content, flowMap) {
   const days = Array.isArray(content?.days) ? content.days : [];
   let envelopes = 0;
   let choices = 0;
@@ -2983,7 +2923,6 @@ function getStoryStats(content, flowMap, textPrompts) {
     branchRules: Array.isArray(flowMap?.rules) ? flowMap.rules.length : 0,
     branchOnlyDays,
     branchOnlyEnvelopes,
-    pendingTexts: Array.isArray(textPrompts) ? textPrompts.filter(item => item.status !== 'done').length : 0,
   };
 }
 
@@ -3002,13 +2941,12 @@ function OverviewTab({ stats, setTab, dirty }) {
     { label: 'Story Days', value: stats.days, note: `${stats.envelopes} envelopes across the full sequence` },
     { label: 'Choices', value: stats.choices, note: `${stats.responseFields} response fields currently defined` },
     { label: 'Branch Rules', value: stats.branchRules, note: `${stats.branchOnlyDays + stats.branchOnlyEnvelopes} hidden branch-only destinations` },
-    { label: 'Text Prompts', value: stats.pendingTexts, note: dirty ? 'You have unsaved local edits' : 'Everything is currently saved' },
+    { label: 'Save State', value: dirty ? 'Dirty' : 'Clean', note: dirty ? 'You have unsaved local edits' : 'Everything is currently saved' },
   ];
 
   const quickLinks = [
     { id: 'story', title: 'Edit story content', desc: 'Rewrite day themes, envelope copy, and path choices.' },
     { id: 'flowmap', title: 'Adjust branching', desc: 'Control where the story jumps after a choice or response.' },
-    { id: 'prompts', title: 'Handle text prompts', desc: 'Review queued real-world texts and mark them sent.' },
     { id: 'controls', title: 'Reset and recover', desc: 'Use the safer controls for resets, imports, and cleanup.' },
   ];
 
@@ -3049,7 +2987,7 @@ function OverviewTab({ stats, setTab, dirty }) {
             <li>{stats.days ? `${stats.days} days are configured.` : 'No story days exist yet.'}</li>
             <li>{stats.choices ? `${stats.choices} path choices are available to players.` : 'No choices exist yet.'}</li>
             <li>{stats.branchRules ? `${stats.branchRules} branching rules can reroute progression.` : 'The story currently follows the default linear path.'}</li>
-            <li>{stats.pendingTexts ? `${stats.pendingTexts} real-world text prompts still need attention.` : 'No pending text prompts are waiting.'}</li>
+            <li>{dirty ? 'Local edits are waiting to be saved.' : 'The saved draft matches the open workspace.'}</li>
           </ul>
         </div>
       </div>
@@ -3058,7 +2996,7 @@ function OverviewTab({ stats, setTab, dirty }) {
 }
 
 // ── Main AdminPanel ───────────────────────────────────────────────────────────
-function AdminPanel({ tweaks, setTweak, onReset, onClose, onContentSaved, textPrompts = [], setTextPrompts }) {
+function AdminPanel({ tweaks, setTweak, onReset, onClose, onContentSaved }) {
   const [tab, setTab] = useState('overview');
   const [content, setContent] = useState(() => loadContentEdits());
   const [flowMap, setFlowMap] = useState(() => loadFlowMap());
@@ -3200,18 +3138,16 @@ function AdminPanel({ tweaks, setTweak, onReset, onClose, onContentSaved, textPr
     story: 'Story',
     flowmap: 'Flow Map',
     versions: 'Versions',
-    prompts: 'Text Prompts',
     controls: 'Controls',
   };
 
   const tabMeta = {
     overview: { group: 'Start here', description: 'See the health of the experience and jump straight to the right workspace.' },
-    settings: { group: 'Configuration', description: 'Adjust names, pacing, alerts, and real-world message delivery settings.' },
+    settings: { group: 'Configuration', description: 'Adjust names and experience intensity.' },
     prologue: { group: 'Content', description: 'Edit the opening sequence and sign-off without touching the main story path.' },
     story: { group: 'Content', description: 'Rewrite day themes, envelopes, and choices with live structure preserved.' },
     flowmap: { group: 'Logic', description: 'Map paths visually from one choice to the next envelope based on answers, selects, or defaults.' },
     versions: { group: 'Tools', description: 'Save snapshots, export builds, and recover a previous version safely.' },
-    prompts: { group: 'Tools', description: 'Review queued text prompts and mark real-world sends as complete.' },
     controls: { group: 'Tools', description: 'Use reset and recovery controls carefully when you need a clean state.' },
   };
 
@@ -3220,10 +3156,10 @@ function AdminPanel({ tweaks, setTweak, onReset, onClose, onContentSaved, textPr
     { title: 'Configuration', tabs: ['settings'] },
     { title: 'Content', tabs: ['prologue', 'story'] },
     { title: 'Logic', tabs: ['flowmap'] },
-    { title: 'Tools', tabs: ['versions', 'prompts', 'controls'] },
+    { title: 'Tools', tabs: ['versions', 'controls'] },
   ];
 
-  const stats = useMemo(() => getStoryStats(content, flowMap, textPrompts), [content, flowMap, textPrompts]);
+  const stats = useMemo(() => getStoryStats(content, flowMap), [content, flowMap]);
   const navFilter = navQuery.trim().toLowerCase();
   const filteredGroups = navGroups
     .map((group) => ({
@@ -3333,8 +3269,8 @@ function AdminPanel({ tweaks, setTweak, onReset, onClose, onContentSaved, textPr
             <div>
               <SectionIntro
                 eyebrow="Configuration"
-                title="Personalization and delivery settings"
-                body="These settings shape how the experience addresses each person, how intense it feels, and how real-world prompt delivery works."
+                title="Personalization settings"
+                body="These settings shape how the experience addresses each person and how intense it feels."
               />
               <div style={{ ...S.sectionHead, marginTop: 0 }}>Names</div>
               <Field label="Her name (how she's addressed)" value={tweaks.herName}
@@ -3351,31 +3287,6 @@ function AdminPanel({ tweaks, setTweak, onReset, onClose, onContentSaved, textPr
                 />
               </div>
 
-              <div style={S.sectionHead}>Real Text Prompts</div>
-              <Field
-                label="Her phone number"
-                value={tweaks.recipientPhone || ''}
-                onChange={v => setTweak('recipientPhone', v)}
-              />
-              <Field
-                label="Shortcut / webhook URL"
-                value={tweaks.shortcutWebhookUrl || ''}
-                onChange={v => setTweak('shortcutWebhookUrl', v)}
-              />
-              <p style={{ color: 'rgba(237,227,209,0.4)', fontSize: 12, lineHeight: 1.6 }}>
-                Optional. If you connect an Apple Shortcut or webhook here, the app will POST the text prompt payload when a flagged choice is completed.
-              </p>
-              <div style={S.btnRow}>
-                <button
-                  style={S.btn}
-                  onClick={() => {
-                    if (typeof Notification === 'undefined') return;
-                    Notification.requestPermission().then(() => {});
-                  }}
-                >
-                  Enable Browser Alerts
-                </button>
-              </div>
             </div>
           )}
 
@@ -3443,52 +3354,6 @@ function AdminPanel({ tweaks, setTweak, onReset, onClose, onContentSaved, textPr
                 showToast={showToast}
                 onClearStoryEdits={() => setStoryLocalEdits({})}
               />
-            </div>
-          )}
-
-          {tab === 'prompts' && (
-            <div>
-              <SectionIntro
-                eyebrow="Tools"
-                title="Queued real-world prompts"
-                body="These are the text prompts generated by flagged choices. Open them in Messages, send them in the real world, then mark them complete here."
-              />
-              <div style={{ ...S.sectionHead, marginTop: 0 }}>Pending Text Prompts</div>
-              <p style={{ color: 'rgba(237,227,209,0.4)', fontSize: 12, marginBottom: 20, lineHeight: 1.6 }}>
-                These are the real-text reminders generated by flagged choices. Open them in Messages, then mark them sent.
-              </p>
-
-              {!textPrompts.length && (
-                <div style={S.card}>No text prompts yet.</div>
-              )}
-
-              {textPrompts.map((prompt) => (
-                <div key={prompt.id} style={S.card}>
-                  <div style={S.cardTitle}>
-                    <span>{prompt.title || 'Text prompt'}</span>
-                    <span>{prompt.status || 'pending'}</span>
-                  </div>
-                  {prompt.recipient ? <div style={{ color: 'rgba(201,169,97,0.6)', fontSize: 12, marginBottom: 8 }}>To {prompt.recipient}</div> : null}
-                  <div style={{ color: 'rgba(237,227,209,0.75)', fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{prompt.message}</div>
-                  <div style={S.btnRow}>
-                    <a style={{ ...S.btn, textDecoration: 'none' }} href={`sms:${encodeURIComponent(prompt.recipient || '')}${prompt.message ? `&body=${encodeURIComponent(prompt.message)}` : ''}`}>Open in Messages</a>
-                    <button style={S.btn} onClick={() => setTextPrompts?.(prev => prev.map(item => item.id === prompt.id ? { ...item, status: 'done' } : item))}>
-                      Mark Sent
-                    </button>
-                    <button style={S.btnDanger} onClick={() => setTextPrompts?.(prev => prev.filter(item => item.id !== prompt.id))}>
-                      Remove
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {!!textPrompts.length && (
-                <div style={S.btnRow}>
-                  <button style={S.btnDanger} onClick={() => setTextPrompts?.([])}>
-                    Clear All Prompts
-                  </button>
-                </div>
-              )}
             </div>
           )}
 

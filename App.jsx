@@ -1,18 +1,26 @@
 // App.jsx — main application state + layout
 
-const { useState, useEffect, useMemo, useRef, useCallback } = React;
+const { useState, useEffect, useMemo } = React;
 
 const TWEAK_DEFAULTS = {
   herName: "her",
   hisName: "mine",
   intensity: 9,
-  recipientPhone: "",
-  shortcutWebhookUrl: "",
 };
 
 const STORAGE_KEY = 'yoursWatching:v2';
 const FLOW_KEY = 'yoursWatching:flowMap:v2';
-const CONTENT_KEY = 'yoursWatching:contentEdits:v2';
+
+function normalizeTweakState(source = {}) {
+  const intensity = Number(source.intensity);
+  return {
+    herName: source.herName ?? TWEAK_DEFAULTS.herName,
+    hisName: source.hisName ?? TWEAK_DEFAULTS.hisName,
+    intensity: Number.isFinite(intensity)
+      ? Math.min(10, Math.max(1, Math.round(intensity)))
+      : TWEAK_DEFAULTS.intensity,
+  };
+}
 
 function toRoman(num) {
   const numerals = [
@@ -138,37 +146,11 @@ function matchesBranchRule(rule, responses) {
   return false;
 }
 
-function buildSmsHref(recipient, body) {
-  const phone = encodeURIComponent(recipient || '');
-  const text = encodeURIComponent(body || '');
-  return `sms:${phone}${text ? `&body=${text}` : ''}`;
-}
-
-function WatchIndicator() {
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-
-  return (
-    <div className="watch-indicator" title="Observed live">
-      <div className="dot" />
-      <span>Observed</span>
-      <span className="rec-time">{hh}:{mm}</span>
-    </div>
-  );
-}
-
 function App() {
-  const [content, setContent] = useState(() => readContent());
+  const [content] = useState(() => readContent());
   const days = content.days || [];
 
-  const [tweaks, setTweaks] = useState(() => ({ ...TWEAK_DEFAULTS, ...(loadState()?.tweaks || {}) }));
+  const [tweaks] = useState(() => normalizeTweakState(loadState()?.tweaks));
   const [showPrologue, setShowPrologue] = useState(() => !loadState()?.started);
 
   // Current index: 0..9 (5 days × 2 slots)
@@ -184,9 +166,7 @@ function App() {
   const [completedIdx, setCompletedIdx] = useState(() => new Set(loadState()?.completedIdx ?? []));
   const [formResponses, setFormResponses] = useState(() => loadState()?.formResponses ?? {});
   const [activatedDayIds, setActivatedDayIds] = useState(() => new Set(loadState()?.activatedDayIds ?? []));
-  const [textPrompts, setTextPrompts] = useState(() => loadState()?.textPrompts ?? []);
 
-  const [tweaksOpen, setTweaksOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const flattened = useMemo(() => flattenDays(days), [days]);
   const visibleDayIndexes = useMemo(() => {
@@ -240,10 +220,6 @@ function App() {
       });
   }, [flattened, completedIdx, formResponses, idx, chosen, envelopeDisplay]);
 
-  const refreshContent = useCallback(() => {
-    setContent(readContent());
-  }, []);
-
   // Persist
   useEffect(() => {
     saveState({
@@ -255,13 +231,8 @@ function App() {
       completedIdx: Array.from(completedIdx),
       formResponses,
       activatedDayIds: Array.from(activatedDayIds),
-      textPrompts,
     });
-  }, [tweaks, showPrologue, idx, envState, chosen, completedIdx, formResponses, activatedDayIds, textPrompts]);
-
-  const updateTweak = useCallback((key, val) => {
-    setTweaks((t) => ({ ...t, [key]: val }));
-  }, []);
+  }, [tweaks, showPrologue, idx, envState, chosen, completedIdx, formResponses, activatedDayIds]);
 
   // Current envelope
   const current = flattened[idx] || null;
@@ -291,10 +262,20 @@ function App() {
     }
   }, [showPrologue, flattened, idx, current, activatedDayIds]);
 
+  useEffect(() => {
+    if (envState !== 'opening') return undefined;
+
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const timeoutId = setTimeout(() => setEnvState('opened'), reduceMotion ? 350 : 2300);
+
+    return () => clearTimeout(timeoutId);
+  }, [envState]);
+
   const handleOpenEnvelope = () => {
     if (envState !== 'resting') return;
     setEnvState('opening');
-    setTimeout(() => setEnvState('opened'), 1200);
   };
 
   const handleChoose = (choiceId) => {
@@ -303,45 +284,7 @@ function App() {
 
   const handleReselect = () => setChosen(null);
 
-  const queueTextPrompt = (prompt) => {
-    setTextPrompts((prev) => [prompt, ...prev]);
-
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      new Notification('Text her now', {
-        body: prompt.message,
-        silent: false,
-      });
-    }
-
-    const webhookUrl = tweaks.shortcutWebhookUrl?.trim();
-    if (webhookUrl) {
-      fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prompt),
-      }).catch(() => {});
-    }
-  };
-
   const handleComplete = () => {
-    const textConfig = chosenChoice?.card?.realText;
-    if (textConfig?.enabled) {
-      const message = rp(textConfig.message || '').trim();
-      const recipient = (textConfig.recipient || tweaks.recipientPhone || '').trim();
-      if (message) {
-        queueTextPrompt({
-          id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          createdAt: new Date().toISOString(),
-          choiceId: chosenChoice.id,
-          envelopeId: env.id,
-          title: rp(chosenChoice.title || env.label || 'Text her now'),
-          message,
-          recipient,
-          status: 'pending',
-        });
-      }
-    }
-
     const nextState = (() => {
       const flowMap = readFlowMap();
       const rules = Array.isArray(flowMap?.rules) ? flowMap.rules : [];
@@ -376,30 +319,6 @@ function App() {
     }, 600);
   };
 
-  const handleReset = () => {
-    if (!confirm('Reset all progress? All opened envelopes will be sealed again.')) return;
-    let savedFlow = null;
-    let savedContent = null;
-    try {
-      savedFlow = localStorage.getItem(FLOW_KEY);
-      savedContent = localStorage.getItem(CONTENT_KEY);
-    } catch {}
-
-    setIdx(0);
-    setEnvState('resting');
-    setChosen(null);
-    setCompletedIdx(new Set());
-    setFormResponses({});
-    setActivatedDayIds(new Set());
-    setTextPrompts([]);
-    setShowPrologue(true);
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
-    try {
-      if (savedFlow !== null) localStorage.setItem(FLOW_KEY, savedFlow);
-      if (savedContent !== null) localStorage.setItem(CONTENT_KEY, savedContent);
-    } catch {}
-  };
-
   if (showPrologue) {
     return (
       <div className="app">
@@ -409,10 +328,8 @@ function App() {
           tweaks={tweaks}
           dayCount={days.length}
           envelopeCount={flattened.length}
-          onAdmin={() => setTweaksOpen(v => !v)}
           onBegin={() => setShowPrologue(false)}
         />
-        {tweaksOpen && <AdminPanel tweaks={tweaks} setTweak={updateTweak} onReset={handleReset} onClose={() => setTweaksOpen(false)} onContentSaved={refreshContent} textPrompts={textPrompts} setTextPrompts={setTextPrompts} />}
       </div>
     );
   }
@@ -420,7 +337,7 @@ function App() {
   if (isDone) {
     return (
       <div className="app">
-        <TopBar addressee={tweaks.herName} onTweaks={() => setTweaksOpen(v => !v)} onHistory={() => setHistoryOpen(v => !v)} />
+        <TopBar addressee={tweaks.herName} onHistory={() => setHistoryOpen(v => !v)} />
         <ChoiceHistoryPanel entries={historyEntries} tweaks={tweaks} open={historyOpen} onClose={() => setHistoryOpen(false)} />
         <div className="desk">
           <DayTimeline days={days} flattened={flattened} currentIdx={flattened.length} completedIdx={completedIdx} activatedDayIds={activatedDayIds} tweaks={tweaks} />
@@ -432,8 +349,6 @@ function App() {
             </div>
           </div>
         </div>
-        <TextPromptTray prompts={textPrompts} setPrompts={setTextPrompts} />
-        {tweaksOpen && <AdminPanel tweaks={tweaks} setTweak={updateTweak} onReset={handleReset} onClose={() => setTweaksOpen(false)} onContentSaved={refreshContent} textPrompts={textPrompts} setTextPrompts={setTextPrompts} />}
       </div>
     );
   }
@@ -459,26 +374,24 @@ function App() {
   if (!env) {
     return (
       <div className="app">
-        <TopBar addressee={tweaks.herName} onTweaks={() => setTweaksOpen(v => !v)} onHistory={() => setHistoryOpen(v => !v)} />
+        <TopBar addressee={tweaks.herName} onHistory={() => setHistoryOpen(v => !v)} />
         <ChoiceHistoryPanel entries={historyEntries} tweaks={tweaks} open={historyOpen} onClose={() => setHistoryOpen(false)} />
         <div className="desk">
           <div className="main">
             <div className="locked">
               <div className="eye">◉</div>
               <h3>Story content missing</h3>
-              <p>Open Admin to restore or re-import the configured days and envelopes.</p>
+              <p>Use the workspace admin to restore or re-import the configured days and envelopes.</p>
             </div>
           </div>
         </div>
-        <TextPromptTray prompts={textPrompts} setPrompts={setTextPrompts} />
-        {tweaksOpen && <AdminPanel tweaks={tweaks} setTweak={updateTweak} onReset={handleReset} onClose={() => setTweaksOpen(false)} onContentSaved={refreshContent} textPrompts={textPrompts} setTextPrompts={setTextPrompts} />}
       </div>
     );
   }
 
   return (
     <div className="app">
-      <TopBar addressee={tweaks.herName} onTweaks={() => setTweaksOpen(v => !v)} onHistory={() => setHistoryOpen(v => !v)} />
+      <TopBar addressee={tweaks.herName} onHistory={() => setHistoryOpen(v => !v)} />
       <ChoiceHistoryPanel entries={historyEntries} tweaks={tweaks} open={historyOpen} onClose={() => setHistoryOpen(false)} />
       <div className="desk">
         <DayTimeline days={days} flattened={flattened} currentIdx={idx} completedIdx={completedIdx} activatedDayIds={activatedDayIds} tweaks={tweaks} />
@@ -540,58 +453,18 @@ function App() {
           )}
         </div>
       </div>
-
-      <TextPromptTray prompts={textPrompts} setPrompts={setTextPrompts} />
-      {tweaksOpen && <AdminPanel tweaks={tweaks} setTweak={updateTweak} onReset={handleReset} onClose={() => setTweaksOpen(false)} onContentSaved={refreshContent} textPrompts={textPrompts} setTextPrompts={setTextPrompts} />}
     </div>
   );
 }
 
-function TextPromptTray({ prompts, setPrompts }) {
-  if (!prompts?.length) return null;
-
-  const pending = prompts.filter(prompt => prompt.status !== 'done');
-  if (!pending.length) return null;
-
-  const latest = pending[0];
-
-  const markDone = (id) => {
-    setPrompts((prev) => prev.map(prompt => prompt.id === id ? { ...prompt, status: 'done' } : prompt));
-  };
-
-  const clearDone = () => {
-    setPrompts((prev) => prev.filter(prompt => prompt.status !== 'done'));
-  };
-
-  return (
-    <div className="text-prompt-tray">
-      <div className="text-prompt-header">
-        <span>Text Her Now</span>
-        <span>{pending.length} pending</span>
-      </div>
-      <div className="text-prompt-title">{latest.title}</div>
-      {latest.recipient ? <div className="text-prompt-meta">To {latest.recipient}</div> : null}
-      <div className="text-prompt-body">{latest.message}</div>
-      <div className="text-prompt-actions">
-        <a className="primary" href={buildSmsHref(latest.recipient, latest.message)}>Open in Messages</a>
-        <button className="secondary" onClick={() => markDone(latest.id)}>Mark sent</button>
-        <button className="secondary" onClick={clearDone}>Clear sent</button>
-      </div>
-    </div>
-  );
-}
-
-function TopBar({ addressee, onTweaks, onHistory, onNewAdmin }) {
+function TopBar({ addressee, onHistory }) {
   return (
     <div className="top-bar">
       <div className="brand">
-        <div className="title">Yours, watching</div>
         <div className="addressee">for {addressee || 'her'}</div>
       </div>
       <div className="top-right">
-        <WatchIndicator />
         {onHistory ? <button className="top-btn" onClick={onHistory}>Choices</button> : null}
-        <button className="top-btn" onClick={onTweaks}>Admin</button>
       </div>
     </div>
   );
@@ -656,26 +529,6 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function TweaksPanel({ tweaks, setTweak, onReset, onClose }) {
-  return (
-    <div className="tweaks-panel">
-      <h4 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 14px' }}>
-        Tweaks
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'rgba(237,227,209,0.5)', cursor: 'pointer', fontSize: '18px', padding: 0, lineHeight: 1 }}>×</button>
-      </h4>
-      <div className="row">
-        <label>Her name</label>
-        <input type="text" value={tweaks.herName} onChange={(e) => setTweak('herName', e.target.value)} />
-      </div>
-      <div className="row">
-        <label>His name / how she addresses him</label>
-        <input type="text" value={tweaks.hisName} onChange={(e) => setTweak('hisName', e.target.value)} />
-      </div>
-      <button className="reset-btn" onClick={onReset}>Reset all progress</button>
     </div>
   );
 }

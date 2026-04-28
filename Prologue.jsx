@@ -1,6 +1,6 @@
 // Prologue.jsx — intro overlay
 
-function Prologue({ prologue, addressee, tweaks, onBegin, onAdmin, dayCount, envelopeCount }) {
+function Prologue({ prologue, addressee, tweaks, onBegin, dayCount, envelopeCount }) {
   const p = prologue || window.GAME_CONTENT.prologue;
   const rp = (text) => window.replacePlaceholders ? window.replacePlaceholders(text, tweaks) : text;
   return (
@@ -23,12 +23,6 @@ function Prologue({ prologue, addressee, tweaks, onBegin, onAdmin, dayCount, env
         <span className="petal p4" />
         <span className="petal p5" />
       </div>
-
-      {onAdmin ? (
-        <button className="prologue-admin" onClick={onAdmin} aria-label="Open admin controls">
-          Admin
-        </button>
-      ) : null}
 
       <div className="prologue-scene">
         <div className="prologue-letter-stack">

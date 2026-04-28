@@ -1,4 +1,4 @@
-import '../../../content.js';
+import { storyContent } from './storyData.js';
 
 const fallbackContent = {
   prologue: {
@@ -14,4 +14,10 @@ const fallbackContent = {
   },
 };
 
-export const defaultContent = globalThis.GAME_CONTENT || fallbackContent;
+export const defaultContent = storyContent || globalThis.WIFEY_STORY_CONTENT || fallbackContent;
+export const defaultFlowMap =
+  defaultContent.epilogue ? { rules: [] } : (
+    globalThis.WIFEY_DEFAULT_FLOW_MAP ||
+    defaultContent.defaultFlowMap ||
+    fallbackContent.defaultFlowMap
+  );

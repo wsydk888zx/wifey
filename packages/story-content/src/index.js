@@ -1,1 +1,1 @@
-export { defaultContent } from './defaultContent.js';
+export { defaultContent, defaultFlowMap } from './defaultContent.js';

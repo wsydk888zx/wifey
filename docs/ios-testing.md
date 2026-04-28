@@ -32,4 +32,4 @@ This project is currently targeting the Personal Team workflow for local iPhone 
 
 ## Immediate Goal
 
-Get the player app packaged and testable with native local notifications before adding any remote push or broader distribution workflow.
+Get the player app packaged and testable through the core story flow before adding any remote push or broader distribution workflow.

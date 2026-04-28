@@ -2,19 +2,21 @@
 
 A private five-chapter erotic story app built for two.
 
-## Running the app
+## Two supported surfaces
 
-ES modules require an HTTP server (not `file://`). One-command options:
+This repo now has two supported browser surfaces in development:
 
-```bash
-# Option 1 — Node (if you have npm)
-npx serve /Users/joncarpenter/Wifey
+- Admin authoring app: `npm run admin:dev`
+- Player app: `npm run player:dev`
 
-# Option 2 — Python (built-in on macOS)
-cd /Users/joncarpenter/Wifey && python3 -m http.server 8080
-```
+Default local URLs:
 
-Then open `http://localhost:3000` (serve) or `http://localhost:8080` (python).
+- Admin: `http://127.0.0.1:5174`
+- Player: `http://127.0.0.1:5173`
+
+When the admin local service is running, the player dev app automatically follows the current
+admin draft. That means you edit in admin and view the result in player without exporting JSON
+just to sanity-check the flow.
 
 ## NFC / QR location triggers
 
@@ -35,11 +37,22 @@ QR codes: generate free at qr-code-generator.com or similar.
 
 When she scans one, it logs to the Movement Record in the Memory Wall, pulses the presence dot, and shows a toast message.
 
-## Admin panel
+## Release smoke
 
-Tap the tiny ◆ button bottom-right. Only you should use it. From here you can:
-- Set hours between chapters
-- Unlock the next chapter manually
-- Schedule messages that appear at specific clock times
-- Read her Desire Dial setting
-- Plan Day 5 choices when she asks you to decide
+The player build still consumes bundled package content from `@wifey/story-content`.
+If you want to check an exported release wrapper directly, you can still open the player with a
+`?releaseUrl=` query that points at a local `{ content, flowMap }` JSON file on the same origin.
+
+## Promoting release content
+
+After an admin release export has been reviewed and accepted, promote that exported
+`{ content, flowMap }` wrapper into the bundled story package before building the native player:
+
+```bash
+npm run promote:content -- /absolute/path/to/yours-watching-release_2026-04-25.json
+npm run verify
+```
+
+Use `--dry-run` first when checking an export without changing `packages/story-content`.
+The command validates the export, normalizes the content model, stores the exported flow map as
+`defaultFlowMap`, and rewrites `packages/story-content/src/storyData.js` for player builds.

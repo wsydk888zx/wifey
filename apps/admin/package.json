@@ -10,6 +10,8 @@
     "ai:server": "node server/server.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@supabase/supabase-js": "^2.104.1",
     "@wifey/story-content": "file:../../packages/story-content",
     "@wifey/story-core": "file:../../packages/story-core",
     "react": "^18.3.1",

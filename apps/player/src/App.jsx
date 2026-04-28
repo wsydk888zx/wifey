@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 
-import { LocalNotifications } from '@capacitor/local-notifications';
 import { defaultContent } from '@wifey/story-content';
 import {
   STORAGE_KEYS,
   TWEAK_DEFAULTS,
   buildCompleteFlowMap,
-  getDayEnvelopes,
+  flattenStoryEnvelopes,
+  getStoryDayId,
+  matchesFlowRule,
   normalizeContentModel,
   replacePlaceholders,
   toRoman,
@@ -15,6 +17,12 @@ import {
 import Envelope from './components/Envelope.jsx';
 import Prologue from './components/Prologue.jsx';
 import TaskCard from './components/TaskCard.jsx';
+
+const storyContent = normalizeContentModel(defaultContent);
+
+const supabase = import.meta.env.VITE_SUPABASE_URL
+  ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
+  : null;
 
 function loadState() {
   try {
@@ -26,58 +34,38 @@ function loadState() {
   }
 }
 
+function loadTweaks() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEYS.tweaks);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+
 function saveState(state) {
   try {
     localStorage.setItem(STORAGE_KEYS.state, JSON.stringify(state));
   } catch {}
 }
 
+function normalizeTweakState(...sources) {
+  const merged = Object.assign({}, ...sources.filter(Boolean));
+  const intensity = Number(merged.intensity);
+
+  return {
+    herName: merged.herName ?? TWEAK_DEFAULTS.herName,
+    hisName: merged.hisName ?? TWEAK_DEFAULTS.hisName,
+    intensity: Number.isFinite(intensity)
+      ? Math.min(10, Math.max(1, Math.round(intensity)))
+      : TWEAK_DEFAULTS.intensity,
+  };
+}
+
 function readFlowMap(content) {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.flow);
-    if (!raw) {
-      return buildCompleteFlowMap(content, content.defaultFlowMap || { rules: [] });
-    }
-
-    return buildCompleteFlowMap(content, JSON.parse(raw));
-  } catch {
-    return buildCompleteFlowMap(content, content.defaultFlowMap || { rules: [] });
-  }
-}
-
-function getDayId(day, index) {
-  return day?.id || `day-${index + 1}`;
-}
-
-function isBranchOnlyEnvelope(day, envelope) {
-  return !!(day?.branchOnly || envelope?.branchOnly);
-}
-
-function flattenDays(days) {
-  const items = [];
-
-  days.forEach((day, dayIndex) => {
-    const envelopes = getDayEnvelopes(day);
-
-    envelopes.forEach((envelope, envelopeIndex) => {
-      if (!envelope) return;
-
-      items.push({
-        index: items.length,
-        dayIndex,
-        day,
-        dayId: getDayId(day, dayIndex),
-        envelopeIndex,
-        slot: envelope.slot || `slot-${envelopeIndex + 1}`,
-        envelope,
-        envelopeId: envelope.id,
-        branchGroup: envelope.branchGroup || '',
-        branchOnly: isBranchOnlyEnvelope(day, envelope),
-      });
-    });
-  });
-
-  return items;
+  return buildCompleteFlowMap(content, content.defaultFlowMap || { rules: [] });
 }
 
 function isEnvelopeActive(item, activatedDayIds) {
@@ -88,160 +76,21 @@ function isEnvelopeActive(item, activatedDayIds) {
   );
 }
 
-function matchesBranchRule(rule, responses) {
-  const rawValue = responses?.[rule.sourceFieldId];
-  const normalized = Array.isArray(rawValue)
-    ? rawValue.map((item) => String(item).trim()).filter(Boolean)
-    : typeof rawValue === 'string'
-      ? rawValue.trim()
-      : '';
-  const expected = String(rule.value || '').trim();
-
-  if (rule.operator === 'always') return true;
-  if (rule.operator === 'is_filled') {
-    return Array.isArray(normalized) ? normalized.length > 0 : !!normalized;
-  }
-
-  if (rule.operator === 'equals') {
-    if (Array.isArray(normalized)) return normalized.includes(expected);
-    return normalized === expected;
-  }
-
-  if (rule.operator === 'contains') {
-    if (Array.isArray(normalized)) {
-      const expectedLower = expected.toLowerCase();
-      return normalized.some((item) => item.toLowerCase().includes(expectedLower));
-    }
-
-    return !!normalized && normalized.toLowerCase().includes(expected.toLowerCase());
-  }
-
-  return false;
-}
-
-function buildSmsHref(recipient, body) {
-  const phone = encodeURIComponent(recipient || '');
-  const text = encodeURIComponent(body || '');
-
-  if (phone && text) return `sms:${phone}&body=${text}`;
-  if (phone) return `sms:${phone}`;
-  if (text) return `sms:?body=${text}`;
-  return 'sms:';
-}
-
-const MAX_NOTIFICATION_ID = 2147483647;
-let notificationCounter = 0;
-
-function createNotificationId() {
-  notificationCounter = (notificationCounter + 1) % 1000;
-  return ((Date.now() % (MAX_NOTIFICATION_ID - 1000)) + notificationCounter) || 1;
-}
-
-async function sendTextPromptNotification(prompt) {
-  try {
-    const permissionStatus = await LocalNotifications.checkPermissions();
-
-    if (permissionStatus.display === 'prompt') {
-      const requestedStatus = await LocalNotifications.requestPermissions();
-      if (requestedStatus.display !== 'granted') return;
-    } else if (permissionStatus.display !== 'granted') {
-      return;
-    }
-
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id: createNotificationId(),
-          title: 'Text her now',
-          body: prompt.message,
-          largeBody: prompt.message,
-          extra: {
-            choiceId: prompt.choiceId,
-            envelopeId: prompt.envelopeId,
-            promptId: prompt.id,
-          },
-        },
-      ],
-    });
-  } catch {}
-}
-
-function WatchIndicator() {
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => setNow(new Date()), 1000);
-    return () => window.clearInterval(intervalId);
-  }, []);
-
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-
-  return (
-    <div className="watch-indicator" title="Observed live">
-      <div className="dot" />
-      <span>Observed</span>
-      <span className="rec-time">
-        {hh}:{mm}
-      </span>
-    </div>
-  );
-}
-
-function TextPromptTray({ prompts, setPrompts }) {
-  if (!prompts?.length) return null;
-
-  const pending = prompts.filter((prompt) => prompt.status !== 'done');
-  if (!pending.length) return null;
-
-  const latest = pending[0];
-
-  const markDone = (id) => {
-    setPrompts((prev) =>
-      prev.map((prompt) => (prompt.id === id ? { ...prompt, status: 'done' } : prompt)),
-    );
-  };
-
-  const clearDone = () => {
-    setPrompts((prev) => prev.filter((prompt) => prompt.status !== 'done'));
-  };
-
-  return (
-    <div className="text-prompt-tray">
-      <div className="text-prompt-header">
-        <span>Text Her Now</span>
-        <span>{pending.length} pending</span>
-      </div>
-      <div className="text-prompt-title">{latest.title}</div>
-      {latest.recipient ? <div className="text-prompt-meta">To {latest.recipient}</div> : null}
-      <div className="text-prompt-body">{latest.message}</div>
-      <div className="text-prompt-actions">
-        <a className="primary" href={buildSmsHref(latest.recipient, latest.message)}>
-          Open in Messages
-        </a>
-        <button className="secondary" onClick={() => markDone(latest.id)}>
-          Mark sent
-        </button>
-        <button className="secondary" onClick={clearDone}>
-          Clear sent
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function TopBar({ addressee, onHistory }) {
+function TopBar({ addressee, onHistory, onReset }) {
   return (
     <div className="top-bar">
       <div className="brand">
-        <div className="title">Yours, watching</div>
         <div className="addressee">for {addressee || 'her'}</div>
       </div>
       <div className="top-right">
-        <WatchIndicator />
         {onHistory ? (
           <button className="top-btn" onClick={onHistory}>
             Choices
+          </button>
+        ) : null}
+        {onReset ? (
+          <button className="top-btn top-btn-danger" onClick={onReset} title="Reset progress">
+            Reset
           </button>
         ) : null}
       </div>
@@ -255,27 +104,40 @@ function ChoiceHistoryPanel({ entries, tweaks, open, onClose }) {
   return (
     <div className={`choice-history-panel ${open ? 'open' : ''}`}>
       <div className="choice-history-header">
-        <h4>Previous Choices</h4>
-        <button onClick={onClose} aria-label="Close choice history">
-          x
-        </button>
+        <span className="choice-history-title">Her choices</span>
+        <button onClick={onClose} aria-label="Close">&#x2715;</button>
       </div>
       <div className="choice-history-scroll">
         {!entries.length ? (
           <div className="choice-history-empty">
             No choices yet. They will appear here as she moves through the story.
           </div>
-        ) : null}
-        {entries.map((entry, index) => (
-          <div key={`${entry.id}-${index}`} className="choice-history-card">
-            <div className="choice-history-theme">{rp(entry.theme || '')}</div>
-            <div className="choice-history-label">{rp(entry.label || '')}</div>
-            <div className="choice-history-choice">{rp(entry.choiceTitle || '')}</div>
-            {entry.choiceHint ? (
-              <div className="choice-history-hint">{rp(entry.choiceHint)}</div>
-            ) : null}
+        ) : (
+          <div className="cht-timeline">
+            {entries.map((entry, index) => (
+              <div
+                key={`${entry.id}-${index}`}
+                className="cht-entry"
+                style={{ animationDelay: `${index * 55}ms` }}
+              >
+                <div className="cht-spine">
+                  <div className="cht-seal">{entry.sealMotif || index + 1}</div>
+                  {index < entries.length - 1 ? <div className="cht-cord" /> : null}
+                </div>
+                <div className="cht-body">
+                  {entry.theme ? (
+                    <div className="cht-theme">{rp(entry.theme)}</div>
+                  ) : null}
+                  <div className="cht-label">{rp(entry.label || '')}</div>
+                  <div className="cht-choice">{rp(entry.choiceTitle || '')}</div>
+                  {entry.choiceHint ? (
+                    <div className="cht-hint">{rp(entry.choiceHint)}</div>
+                  ) : null}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -287,7 +149,7 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
     .map((day, index) => ({
       day,
       index,
-      dayId: getDayId(day, index),
+      dayId: getStoryDayId(day, index),
       hasActiveEnvelopes: flattened.some(
         (item) => item.dayIndex === index && isEnvelopeActive(item, activatedDayIds),
       ),
@@ -310,7 +172,7 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
         const className = dayComplete ? 'done' : isCurrent ? 'current' : 'future';
 
         return (
-          <div key={getDayId(day, index)} className={`seal-node ${className}`}>
+          <div key={getStoryDayId(day, index)} className={`seal-node ${className}`}>
             <div className="seal-medallion">{toRoman(visibleIndex + 1)}</div>
             <div className="seal-caption">
               <span className="day-line">Day {toRoman(visibleIndex + 1)}</span>
@@ -325,13 +187,14 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
 
 function App() {
   const persistedState = useMemo(() => loadState(), []);
-  const content = useMemo(() => normalizeContentModel(defaultContent), []);
+  const persistedTweaks = useMemo(() => loadTweaks(), []);
+  const content = storyContent;
   const days = content.days || [];
 
-  const [tweaks] = useState(() => ({
-    ...TWEAK_DEFAULTS,
-    ...(persistedState?.tweaks || {}),
-  }));
+  const tweaks = useMemo(
+    () => normalizeTweakState(TWEAK_DEFAULTS, persistedState?.tweaks, persistedTweaks),
+    [persistedState, persistedTweaks],
+  );
   const [showPrologue, setShowPrologue] = useState(() => !persistedState?.started);
   const [idx, setIdx] = useState(() => persistedState?.idx ?? 0);
   const [envState, setEnvState] = useState(() => persistedState?.envState ?? 'resting');
@@ -345,13 +208,12 @@ function App() {
   const [activatedDayIds, setActivatedDayIds] = useState(
     () => new Set(persistedState?.activatedDayIds ?? []),
   );
-  const [textPrompts, setTextPrompts] = useState(() => persistedState?.textPrompts ?? []);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedChoices, setSelectedChoices] = useState(
     () => persistedState?.selectedChoices ?? {},
   );
 
-  const flattened = useMemo(() => flattenDays(days), [days]);
+  const flattened = useMemo(() => flattenStoryEnvelopes(days), [days]);
   const visibleDayIndexes = useMemo(
     () =>
       days
@@ -414,6 +276,7 @@ function App() {
             id: item.envelope.id,
             label: envelopeDisplay.get(item.envelope.id)?.label || item.envelope.label,
             theme: item.day?.theme,
+            sealMotif: item.envelope.sealMotif || String(item.dayIndex + 1),
             choiceTitle: selectedChoice?.title || 'Completed',
             choiceHint: selectedChoice?.hint || '',
           };
@@ -431,7 +294,6 @@ function App() {
       completedIdx: Array.from(completedIdx),
       formResponses,
       activatedDayIds: Array.from(activatedDayIds),
-      textPrompts,
       selectedChoices,
     });
   }, [
@@ -443,9 +305,17 @@ function App() {
     completedIdx,
     formResponses,
     activatedDayIds,
-    textPrompts,
     selectedChoices,
   ]);
+
+  useEffect(() => {
+    if (!supabase || !responseKey) return;
+    const [envelopeId, choiceId] = responseKey.split('::');
+    supabase.from('player_responses').upsert(
+      { envelope_id: envelopeId, choice_id: choiceId, responses: currentResponses, updated_at: new Date().toISOString() },
+      { onConflict: 'envelope_id,choice_id' }
+    ).then(() => {});
+  }, [responseKey, currentResponses]);
 
   const current = flattened[idx] || null;
   const isDone = idx >= flattened.length;
@@ -484,10 +354,20 @@ function App() {
   const currentResponses = responseKey ? formResponses[responseKey] || {} : {};
   const rp = (text) => replacePlaceholders(text, tweaks);
 
+  useEffect(() => {
+    if (envState !== 'opening') return undefined;
+
+    const reduceMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    const timeoutId = window.setTimeout(() => setEnvState('opened'), reduceMotion ? 350 : 2300);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [envState]);
+
   const handleOpenEnvelope = () => {
     if (envState !== 'resting') return;
     setEnvState('opening');
-    window.setTimeout(() => setEnvState('opened'), 1200);
   };
 
   const handleChoose = (choiceId) => {
@@ -498,50 +378,15 @@ function App() {
     setChosen(null);
   };
 
-  const queueTextPrompt = (prompt) => {
-    setTextPrompts((prev) => [prompt, ...prev]);
-
-    void sendTextPromptNotification(prompt);
-
-    const webhookUrl = tweaks.shortcutWebhookUrl?.trim();
-    if (webhookUrl) {
-      fetch(webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(prompt),
-      }).catch(() => {});
-    }
-  };
-
   const handleComplete = () => {
     if (!env || !chosenChoice) return;
-
-    const textConfig = chosenChoice.card?.realText;
-
-    if (textConfig?.enabled) {
-      const message = rp(textConfig.message || '').trim();
-      const recipient = (textConfig.recipient || tweaks.recipientPhone || '').trim();
-
-      if (message) {
-        queueTextPrompt({
-          id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-          createdAt: new Date().toISOString(),
-          choiceId: chosenChoice.id,
-          envelopeId: env.id,
-          title: rp(chosenChoice.title || env.label || 'Text her now'),
-          message,
-          recipient,
-          status: 'pending',
-        });
-      }
-    }
 
     const nextState = (() => {
       const flowMap = readFlowMap(content);
       const rules = Array.isArray(flowMap?.rules) ? flowMap.rules : [];
       const matchingRule = rules.find((rule) => {
         if (rule.sourceChoiceId !== chosenChoice.id) return false;
-        return matchesBranchRule(rule, currentResponses);
+        return matchesFlowRule(rule, currentResponses);
       });
       const activated = new Set(activatedDayIds);
 
@@ -591,7 +436,6 @@ function App() {
     setCompletedIdx(new Set());
     setFormResponses({});
     setActivatedDayIds(new Set());
-    setTextPrompts([]);
     setSelectedChoices({});
     setHistoryOpen(false);
     setShowPrologue(true);
@@ -611,6 +455,8 @@ function App() {
       return next;
     });
   };
+
+
 
   if (showPrologue) {
     return (
@@ -668,7 +514,6 @@ function App() {
             </div>
           </div>
         </div>
-        <TextPromptTray prompts={textPrompts} setPrompts={setTextPrompts} />
       </div>
     );
   }
@@ -679,6 +524,7 @@ function App() {
         <TopBar
           addressee={tweaks.herName}
           onHistory={() => setHistoryOpen((open) => !open)}
+          onReset={handleReset}
         />
         <ChoiceHistoryPanel
           entries={historyEntries}
@@ -695,14 +541,17 @@ function App() {
             </div>
           </div>
         </div>
-        <TextPromptTray prompts={textPrompts} setPrompts={setTextPrompts} />
       </div>
     );
   }
 
   return (
     <div className="app">
-      <TopBar addressee={tweaks.herName} onHistory={() => setHistoryOpen((open) => !open)} />
+      <TopBar
+        addressee={tweaks.herName}
+        onHistory={() => setHistoryOpen((open) => !open)}
+        onReset={handleReset}
+      />
       <ChoiceHistoryPanel
         entries={historyEntries}
         tweaks={tweaks}
@@ -768,8 +617,8 @@ function App() {
                       {['i.', 'ii.', 'iii.', 'iv.', 'v.'][index] || `${index + 1}.`}
                     </div>
                     <div className="choice-text">
-                      <span className="title-script">{rp(choice.title)}</span>
-                      <span className="hint">{rp(choice.hint)}</span>
+                      <span className="title-script">{rp(choice.title || choice.heading)}</span>
+                      {choice.hint ? <span className="hint">{rp(choice.hint)}</span> : null}
                     </div>
                   </button>
                 ))}
@@ -779,7 +628,7 @@ function App() {
 
           {envState === 'opened' && chosenChoice ? (
             <TaskCard
-              card={chosenChoice.card}
+              card={chosenChoice.card || chosenChoice}
               envelope={{
                 ...env,
                 label: envDisplay?.label || env.label,
@@ -798,7 +647,6 @@ function App() {
         </div>
       </div>
 
-      <TextPromptTray prompts={textPrompts} setPrompts={setTextPrompts} />
     </div>
   );
 }

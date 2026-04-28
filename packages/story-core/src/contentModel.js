@@ -33,8 +33,58 @@ export function getLegacyDayEnvelopes(day) {
 }
 
 export function getDayEnvelopes(day) {
-  if (Array.isArray(day?.envelopes)) return day.envelopes;
-  return getLegacyDayEnvelopes(day);
+  const explicitEnvelopes = Array.isArray(day?.envelopes) ? day.envelopes.filter(Boolean) : [];
+  const legacyEnvelopes = getLegacyDayEnvelopes(day);
+  if (!explicitEnvelopes.length) return legacyEnvelopes;
+
+  const explicitKeys = new Set(
+    explicitEnvelopes.map((envelope) => envelope.id || envelope.slot || '').filter(Boolean),
+  );
+
+  const missingLegacyEnvelopes = legacyEnvelopes.filter((envelope) => {
+    const key = envelope.id || envelope.slot || '';
+    return !key || !explicitKeys.has(key);
+  });
+
+  return [...missingLegacyEnvelopes, ...explicitEnvelopes];
+}
+
+export function getStoryDayId(day, dayIndex) {
+  return day?.id || `day-${dayIndex + 1}`;
+}
+
+export function isBranchOnlyEnvelope(day, envelope) {
+  return !!(day?.branchOnly || envelope?.branchOnly);
+}
+
+export function flattenStoryEnvelopes(daysOrContent) {
+  const days = Array.isArray(daysOrContent)
+    ? daysOrContent
+    : Array.isArray(daysOrContent?.days)
+    ? daysOrContent.days
+    : [];
+  const items = [];
+
+  days.forEach((day, dayIndex) => {
+    getDayEnvelopes(day).forEach((envelope, envelopeIndex) => {
+      if (!envelope) return;
+
+      items.push({
+        index: items.length,
+        dayIndex,
+        envelopeIndex,
+        day,
+        dayId: getStoryDayId(day, dayIndex),
+        slot: envelope.slot || `slot-${envelopeIndex + 1}`,
+        envelope,
+        envelopeId: envelope.id,
+        branchOnly: isBranchOnlyEnvelope(day, envelope),
+        branchGroup: envelope.branchGroup || '',
+      });
+    });
+  });
+
+  return items;
 }
 
 function normalizeEnvelope(
@@ -136,21 +186,7 @@ export function buildCompleteFlowMap(content, rawFlowMap) {
   const normalizedContent = normalizeContentModel(content);
   const explicit = normalizeFlowMap(rawFlowMap);
   const explicitRules = Array.isArray(explicit.rules) ? explicit.rules : [];
-  const items = [];
-
-  normalizedContent.days.forEach((day, dayIndex) => {
-    getDayEnvelopes(day).forEach((envelope, envelopeIndex) => {
-      items.push({
-        dayIndex,
-        envelopeIndex,
-        day,
-        envelope,
-        dayId: day.id || `day-${dayIndex + 1}`,
-        branchOnly: !!(day?.branchOnly || envelope?.branchOnly),
-        branchGroup: envelope?.branchGroup || '',
-      });
-    });
-  });
+  const items = flattenStoryEnvelopes(normalizedContent.days);
 
   const generatedRules = [];
 
