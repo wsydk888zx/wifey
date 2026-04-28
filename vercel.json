@@ -1,0 +1,7 @@
+{
+  "buildCommand": "npm run build --workspace @wifey/admin",
+  "outputDirectory": "apps/admin/dist",
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
+}
