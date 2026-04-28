@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 
-import { normalizeInputType, replacePlaceholders } from '@wifey/story-core';
+import { replacePlaceholders } from '@wifey/story-core';
+
+function normalizeFieldType(type) {
+  if (type === 'text') return 'short_text';
+  if (type === 'textarea') return 'long_text';
+  if (type === 'select') return 'single_select';
+  if (type === 'multiselect') return 'multi_select';
+  return type || 'short_text';
+}
 
 function TaskCard({
   card,
@@ -50,7 +58,7 @@ function TaskCard({
   };
 
   const renderInput = (field) => {
-    const type = normalizeInputType(field.type);
+    const type = normalizeFieldType(field.type);
     const value = responses[field.id] ?? (type === 'multi_select' ? [] : '');
 
     if (type === 'long_text') {
