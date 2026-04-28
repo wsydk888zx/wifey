@@ -236,15 +236,10 @@ function TextPromptTray({ prompts, setPrompts }) {
   );
 }
 
-function TopBar({ addressee, onHistory }) {
+function TopBar({ onHistory }) {
   return (
     <div className="top-bar">
-      <div className="brand">
-        <div className="title">Yours, watching</div>
-        <div className="addressee">for {addressee || 'her'}</div>
-      </div>
       <div className="top-right">
-        <WatchIndicator />
         {onHistory ? (
           <button className="top-btn" onClick={onHistory}>
             Choices
@@ -342,6 +337,7 @@ function App() {
   const persistedState = useMemo(() => loadState(), []);
   const [content, setContent] = useState(null);
   const [contentLoading, setContentLoading] = useState(true);
+  const [remoteTweaks, setRemoteTweaks] = useState(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -356,7 +352,9 @@ function App() {
       .single()
       .then(({ data, error }) => {
         if (data && !error) {
-          setContent(normalizeContentModel(data.content));
+          const { tweaks: embedded, ...storyOnly } = data.content;
+          setContent(normalizeContentModel(storyOnly));
+          if (embedded) setRemoteTweaks(embedded);
         } else {
           setContent(normalizeContentModel(defaultContent));
         }
@@ -370,6 +368,10 @@ function App() {
     ...TWEAK_DEFAULTS,
     ...(persistedState?.tweaks || {}),
   }));
+
+  const effectiveTweaks = remoteTweaks
+    ? { ...TWEAK_DEFAULTS, ...remoteTweaks, ...tweaks }
+    : tweaks;
   const [showPrologue, setShowPrologue] = useState(() => !persistedState?.started);
   const [idx, setIdx] = useState(() => persistedState?.idx ?? 0);
   const [envState, setEnvState] = useState(() => persistedState?.envState ?? 'resting');
@@ -538,7 +540,7 @@ function App() {
   const chosenChoice = env?.choices?.find((choice) => choice.id === chosen) || null;
   const responseKey = chosenChoice ? `${env.id}::${chosenChoice.id}` : null;
   const currentResponses = responseKey ? formResponses[responseKey] || {} : {};
-  const rp = (text) => replacePlaceholders(text, tweaks);
+  const rp = (text) => replacePlaceholders(text, effectiveTweaks);
 
   const handleOpenEnvelope = () => {
     if (envState !== 'resting') return;
@@ -688,8 +690,8 @@ function App() {
       <div className="app">
         <Prologue
           prologue={content.prologue}
-          addressee={tweaks.herName}
-          tweaks={tweaks}
+
+          tweaks={effectiveTweaks}
           dayCount={days.length}
           envelopeCount={flattened.length}
           onBegin={() => setShowPrologue(false)}
@@ -702,12 +704,12 @@ function App() {
     return (
       <div className="app">
         <TopBar
-          addressee={tweaks.herName}
+
           onHistory={() => setHistoryOpen((open) => !open)}
         />
         <ChoiceHistoryPanel
           entries={historyEntries}
-          tweaks={tweaks}
+          tweaks={effectiveTweaks}
           open={historyOpen}
           onClose={() => setHistoryOpen(false)}
         />
@@ -718,7 +720,7 @@ function App() {
             currentIdx={flattened.length}
             completedIdx={completedIdx}
             activatedDayIds={activatedDayIds}
-            tweaks={tweaks}
+            tweaks={effectiveTweaks}
           />
           <div className="main main-finale">
             <div className="finale">
@@ -748,12 +750,12 @@ function App() {
     return (
       <div className="app">
         <TopBar
-          addressee={tweaks.herName}
+
           onHistory={() => setHistoryOpen((open) => !open)}
         />
         <ChoiceHistoryPanel
           entries={historyEntries}
-          tweaks={tweaks}
+          tweaks={effectiveTweaks}
           open={historyOpen}
           onClose={() => setHistoryOpen(false)}
         />
@@ -773,7 +775,7 @@ function App() {
 
   return (
     <div className="app">
-      <TopBar addressee={tweaks.herName} onHistory={() => setHistoryOpen((open) => !open)} />
+      <TopBar onHistory={() => setHistoryOpen((open) => !open)} />
       <ChoiceHistoryPanel
         entries={historyEntries}
         tweaks={tweaks}
@@ -787,7 +789,7 @@ function App() {
           currentIdx={idx}
           completedIdx={completedIdx}
           activatedDayIds={activatedDayIds}
-          tweaks={tweaks}
+          tweaks={effectiveTweaks}
         />
 
         <div
@@ -807,8 +809,8 @@ function App() {
               </div>
               <Envelope
                 envelope={{ ...env, label: envDisplay?.label || env.label }}
-                addressee={tweaks.herName}
-                tweaks={tweaks}
+      
+                tweaks={effectiveTweaks}
                 state={envState}
                 onOpen={handleOpenEnvelope}
               />
@@ -856,8 +858,8 @@ function App() {
                 label: envDisplay?.label || env.label,
                 timeLabel: envDisplay?.timeLabel || env.timeLabel,
               }}
-              addressee={tweaks.herName}
-              tweaks={tweaks}
+    
+              tweaks={effectiveTweaks}
               completed={completedIdx.has(idx)}
               onComplete={handleComplete}
               onReselect={handleReselect}

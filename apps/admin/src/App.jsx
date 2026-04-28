@@ -894,7 +894,7 @@ function AdminApp({ session }) {
     return supabase.from('story_content').upsert(
       {
         id: 'main',
-        content: draftToPublish.content,
+        content: { ...draftToPublish.content, tweaks: draftToPublish.tweaks },
         flow_map: draftToPublish.flowMap || { rules: [] },
         updated_at: new Date().toISOString(),
       },
