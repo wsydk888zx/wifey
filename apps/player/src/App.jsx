@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { createClient } from '@supabase/supabase-js';
-import { LocalNotifications } from '@capacitor/local-notifications';
 import { defaultContent } from '@wifey/story-content';
+import { subscribeToPush, getExistingSubscription } from './usePushSubscription.js';
 import {
   TWEAK_DEFAULTS,
   buildCompleteFlowMap,
@@ -117,34 +117,10 @@ function buildSmsHref(recipient, body) {
   return 'sms:';
 }
 
-const MAX_NOTIFICATION_ID = 2147483647;
-let notificationCounter = 0;
-
-function createNotificationId() {
-  notificationCounter = (notificationCounter + 1) % 1000;
-  return ((Date.now() % (MAX_NOTIFICATION_ID - 1000)) + notificationCounter) || 1;
-}
-
-async function sendTextPromptNotification(prompt) {
+function sendTextPromptNotification(prompt) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
-    const permissionStatus = await LocalNotifications.checkPermissions();
-    if (permissionStatus.display === 'prompt') {
-      const requested = await LocalNotifications.requestPermissions();
-      if (requested.display !== 'granted') return;
-    } else if (permissionStatus.display !== 'granted') {
-      return;
-    }
-    await LocalNotifications.schedule({
-      notifications: [
-        {
-          id: createNotificationId(),
-          title: 'Text her now',
-          body: prompt.message,
-          largeBody: prompt.message,
-          extra: { choiceId: prompt.choiceId, envelopeId: prompt.envelopeId, promptId: prompt.id },
-        },
-      ],
-    });
+    new Notification('Text her now', { body: prompt.message, icon: '/icons/icon-192.png' });
   } catch {}
 }
 
@@ -285,6 +261,55 @@ function LoadingScreen() {
             <p style={{ fontFamily: 'var(--serif)', color: 'var(--brass)' }}>Loading…</p>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Push notification prompt ──────────────────────────────────────────────────
+
+function NotificationPrompt({ onDone }) {
+  const [loading, setLoading] = React.useState(false);
+
+  const handleEnable = async () => {
+    setLoading(true);
+    await subscribeToPush();
+    setLoading(false);
+    onDone();
+  };
+
+  return (
+    <div style={{
+      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
+      background: 'var(--parchment)', borderTop: '1px solid var(--brass)',
+      padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10,
+      fontFamily: 'var(--sans)',
+    }}>
+      <p style={{ margin: 0, fontFamily: 'var(--serif)', fontSize: '1rem', color: 'var(--ink, #2a1f14)' }}>
+        Enable notifications to know when a new envelope arrives.
+      </p>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button
+          onClick={handleEnable}
+          disabled={loading}
+          style={{
+            flex: 1, padding: '10px 0', background: 'var(--brass)', color: '#fff',
+            border: 'none', borderRadius: 4, fontFamily: 'var(--sans)', fontSize: '0.9rem',
+            cursor: loading ? 'wait' : 'pointer',
+          }}
+        >
+          {loading ? 'Enabling…' : 'Enable notifications'}
+        </button>
+        <button
+          onClick={onDone}
+          style={{
+            padding: '10px 16px', background: 'transparent', color: 'var(--brass)',
+            border: '1px solid var(--brass)', borderRadius: 4, fontFamily: 'var(--sans)',
+            fontSize: '0.9rem', cursor: 'pointer',
+          }}
+        >
+          Later
+        </button>
       </div>
     </div>
   );
@@ -730,6 +755,17 @@ function App() {
   const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
   const [flowMap, setFlowMap] = useState({ rules: [] });
   const [initialState, setInitialState] = useState(null);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!('Notification' in window) || !('PushManager' in window)) return;
+    if (Notification.permission === 'granted') return;
+    if (Notification.permission === 'denied') return;
+    getExistingSubscription().then((sub) => {
+      if (!sub) setShowNotifPrompt(true);
+    });
+  }, [ready]);
 
   useEffect(() => {
     async function load() {
@@ -764,12 +800,17 @@ function App() {
   if (!ready) return <LoadingScreen />;
 
   return (
-    <PlayerApp
-      content={content}
-      tweaks={tweaks}
-      flowMap={flowMap}
-      initialState={initialState}
-    />
+    <>
+      <PlayerApp
+        content={content}
+        tweaks={tweaks}
+        flowMap={flowMap}
+        initialState={initialState}
+      />
+      {showNotifPrompt ? (
+        <NotificationPrompt onDone={() => setShowNotifPrompt(false)} />
+      ) : null}
+    </>
   );
 }
 

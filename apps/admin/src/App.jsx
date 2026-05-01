@@ -37,8 +37,8 @@ import {
   subscribeToPlayerState,
 } from './adminStorage.js';
 
-const sections = ['Overview', 'Settings', 'Story', 'Flow', 'Responses', 'AI Drafts', 'Snapshots', 'Publish'];
-const enabledSections = new Set(['Overview', 'Settings', 'Story', 'Flow', 'Responses', 'AI Drafts', 'Snapshots', 'Publish']);
+const sections = ['Overview', 'Settings', 'Story', 'Flow', 'Responses', 'AI Drafts', 'Snapshots', 'Publish', 'Notifications'];
+const enabledSections = new Set(['Overview', 'Settings', 'Story', 'Flow', 'Responses', 'AI Drafts', 'Snapshots', 'Publish', 'Notifications']);
 const sectionHeadings = {
   Overview: { id: 'overview-heading', title: 'Content Health' },
   Settings: { id: 'settings-heading', title: 'Settings' },
@@ -48,6 +48,7 @@ const sectionHeadings = {
   'AI Drafts': { id: 'ai-drafts-heading', title: 'AI Drafts' },
   Snapshots: { id: 'snapshots-heading', title: 'Snapshots' },
   Publish: { id: 'publish-heading', title: 'Publish Checkpoint' },
+  Notifications: { id: 'notifications-heading', title: 'Notification Schedule' },
 };
 const ADMIN_LOCAL_SERVICE_BASE_URL =
   import.meta.env.VITE_ADMIN_LOCAL_SERVICE_BASE_URL ||
@@ -3003,6 +3004,95 @@ function AdminApp({ session }) {
               )}
             </section>
           </>
+        ) : activeSection === 'Notifications' ? (
+          <>
+            <section className="data-panel" aria-labelledby="notifications-heading">
+              <div className="panel-heading">
+                <h3 id="notifications-heading">Notification Schedule</h3>
+                <span>
+                  {content.days.flatMap((d) => getDayEnvelopes(d)).filter((e) => e?.scheduledAt && e?.notify !== false).length} scheduled
+                </span>
+              </div>
+              <p style={{ padding: '0 0 12px', color: 'var(--ink-muted, #6b5c48)', fontSize: '0.85rem' }}>
+                Notifications are driven by the <strong>Scheduled At</strong> field on each envelope in the Story editor.
+                Set a date/time there and check "Send notification" — then Publish. The Supabase Edge Function fires
+                the push at that time.
+              </p>
+              <div className="notification-schedule-list">
+                {content.days.map((day, dayIndex) =>
+                  getDayEnvelopes(day).map((envelope, envIndex) => {
+                    if (!envelope) return null;
+                    const hasTime = !!envelope.scheduledAt;
+                    const willNotify = hasTime && envelope.notify !== false;
+                    return (
+                      <div
+                        key={envelope.id || `${dayIndex}-${envIndex}`}
+                        className={`notif-row ${willNotify ? 'notif-row--active' : 'notif-row--off'}`}
+                      >
+                        <div className="notif-row-meta">
+                          <span className="notif-row-label">
+                            Day {dayIndex + 1} · {envelope.timeLabel || `Envelope ${envIndex + 1}`}
+                          </span>
+                          <span className={`status-pill ${willNotify ? 'success' : 'neutral'}`}>
+                            {willNotify ? 'Will notify' : hasTime ? 'Notify off' : 'No time set'}
+                          </span>
+                        </div>
+                        <div className="notif-row-time">
+                          {hasTime
+                            ? new Date(envelope.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+                            : '—'}
+                        </div>
+                        <div className="notif-row-fields">
+                          <label className="field-block">
+                            <span>Notification Title</span>
+                            <input
+                              type="text"
+                              placeholder={`Day ${dayIndex + 1} is here`}
+                              value={envelope.notificationTitle || ''}
+                              onChange={(e) => {
+                                const days = content.days.map((d, di) => {
+                                  if (di !== dayIndex) return d;
+                                  const envelopes = getDayEnvelopes(d).map((env, ei) => {
+                                    if (ei !== envIndex) return env;
+                                    return { ...env, notificationTitle: e.target.value };
+                                  });
+                                  return { ...d, envelopes };
+                                });
+                                setContent((prev) => ({ ...prev, days }));
+                              }}
+                            />
+                          </label>
+                          <label className="field-block">
+                            <span>Notification Body</span>
+                            <input
+                              type="text"
+                              placeholder="Your next envelope is waiting."
+                              value={envelope.notificationBody || ''}
+                              onChange={(e) => {
+                                const days = content.days.map((d, di) => {
+                                  if (di !== dayIndex) return d;
+                                  const envelopes = getDayEnvelopes(d).map((env, ei) => {
+                                    if (ei !== envIndex) return env;
+                                    return { ...env, notificationBody: e.target.value };
+                                  });
+                                  return { ...d, envelopes };
+                                });
+                                setContent((prev) => ({ ...prev, days }));
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+              <div className="field-note" style={{ marginTop: 16 }}>
+                After editing, go to <strong>Publish</strong> to push the updated schedule to Supabase.
+                The Edge Function reads <code>story_content</code> directly — no separate table needed.
+              </div>
+            </section>
+          </>
         ) : (
           <>
             <section className="data-panel" aria-labelledby="placeholder-preview-heading">
@@ -3322,6 +3412,37 @@ function AdminApp({ session }) {
                                   }
                                 />
                               </label>
+                            </div>
+                            <div className="split-fields">
+                              <label className="field-block">
+                                <span>Notification Time</span>
+                                <input
+                                  type="datetime-local"
+                                  value={selectedEnvelope.scheduledAt ? selectedEnvelope.scheduledAt.slice(0, 16) : ''}
+                                  onChange={(event) => {
+                                    const val = event.target.value;
+                                    updateEnvelope(safeDayIndex, safeEnvelopeIndex, {
+                                      scheduledAt: val ? new Date(val).toISOString() : null,
+                                    });
+                                  }}
+                                />
+                              </label>
+                              <label className="field-block checkbox">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedEnvelope.notify !== false}
+                                  onChange={(event) =>
+                                    updateEnvelope(safeDayIndex, safeEnvelopeIndex, {
+                                      notify: event.target.checked,
+                                    })
+                                  }
+                                  disabled={!selectedEnvelope.scheduledAt}
+                                />
+                                <span>Send notification</span>
+                              </label>
+                            </div>
+                            <div className="field-note">
+                              Times are stored in your browser's local timezone. Notifications will fire at this time on iOS devices.
                             </div>
                             <div className="structure-actions">
                               <label className="toggle-field">

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<!-- Open this file in a browser, right-click each canvas and "Save image as"
+     to export icon-192.png and icon-512.png into this folder, then delete this file. -->
+<html>
+<body style="background:#111;display:flex;gap:24px;padding:24px;align-items:flex-start">
+<script>
+function makeIcon(size) {
+  const c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  c.title = `icon-${size}.png`;
+  const ctx = c.getContext('2d');
+  // background
+  ctx.fillStyle = '#f5f0e8';
+  ctx.fillRect(0, 0, size, size);
+  // brass circle
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, size*0.42, 0, Math.PI*2);
+  ctx.fillStyle = '#c9a961';
+  ctx.fill();
+  // wax seal inner
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, size*0.28, 0, Math.PI*2);
+  ctx.fillStyle = '#8b1a1a';
+  ctx.fill();
+  // Y initial
+  ctx.fillStyle = '#f5f0e8';
+  ctx.font = `bold ${size*0.32}px Georgia,serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('Y', size/2, size/2 + size*0.02);
+  document.body.appendChild(c);
+}
+makeIcon(192);
+makeIcon(512);
+</script>
+</body>
+</html>

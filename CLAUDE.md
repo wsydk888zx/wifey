@@ -6,7 +6,7 @@ A private interactive story experience ("Yours, Watching"). The recipient moves 
 
 The project has two surfaces:
 
-- `apps/player`: user-facing player app, built with Vite and Capacitor — ships as an iOS native app
+- `apps/player`: user-facing player app, built with Vite — deployed as a **PWA on Vercel**, installed to iPhone Home Screen
 - `apps/admin`: authoring surface, built with Vite — **hosted on Vercel**
 - `packages/story-core`: shared content model, flow, placeholder, and formatting logic
 - `packages/story-content`: bundled story content
@@ -15,14 +15,54 @@ The project has two surfaces:
 
 | Surface | Runtime | Host |
 |---|---|---|
-| `apps/player` | iOS native (Capacitor) | Device |
+| `apps/player` | PWA (iOS Safari, Home Screen) | Vercel |
 | `apps/admin` | Browser | Vercel |
 | Admin AI server (`apps/admin/server/server.js`) | Node.js | Local (author's machine) |
 | Player responses | Supabase `player_responses` table | Supabase (hosted) |
+| Push notifications | Supabase Edge Function (cron) | Supabase (hosted) |
 
 **Admin and player are always on separate devices.** Never build features that assume shared browser storage or same-device access. Player responses flow through Supabase so they work on any network.
 
-The root app is a legacy player-only fallback. Do not treat it as the long-term architecture. See `docs/dev-rules.md` and `docs/architecture.md` before changing structure.
+### PWA deployment workflow
+
+The player is a PWA deployed to Vercel. No Xcode, no Apple Configurator 2, no native build required.
+
+**Deploy a player update:**
+```bash
+npm run build --workspace @wifey/player
+# Push to git — Vercel auto-deploys from main
+```
+
+**First-time setup for the recipient's iPhone:**
+1. Open the player URL in Safari on iPhone (iOS 16.4+)
+2. Tap Share → **Add to Home Screen**
+3. Open from Home Screen (required for push notifications to work)
+4. Tap "Enable notifications" when prompted → grant permission
+
+**Required Vercel env vars for `apps/player`:**
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+- `VITE_VAPID_PUBLIC_KEY` — generate with `npx web-push generate-vapid-keys`
+
+### Push notification setup (one-time)
+
+1. Generate VAPID keys: `npx web-push generate-vapid-keys`
+2. Add public key to Vercel env as `VITE_VAPID_PUBLIC_KEY`
+3. Set Supabase secrets:
+   ```bash
+   supabase secrets set VAPID_SUBJECT=mailto:you@example.com
+   supabase secrets set VAPID_PUBLIC_KEY=<your-public-key>
+   supabase secrets set VAPID_PRIVATE_KEY=<your-private-key>
+   ```
+4. Run the SQL migration: `supabase/migrations/20260430_push_notifications.sql`
+5. Deploy the Edge Function:
+   ```bash
+   supabase functions deploy send-scheduled-notifications
+   supabase functions schedule send-scheduled-notifications --cron "* * * * *"
+   ```
+6. In the admin, go to **Notifications** tab to review the schedule, then **Publish** to push to Supabase.
+
+The root app is a legacy player-only fallback. Do not treat it as the long-term architecture.
 
 ## File map — what is authoritative
 

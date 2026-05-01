@@ -1916,3 +1916,55 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* Notification schedule */
+.notification-schedule-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.notif-row {
+  border: 1px solid #e0d8c8;
+  border-radius: 6px;
+  padding: 14px 16px;
+  background: #fdfaf5;
+}
+
+.notif-row--active {
+  border-color: #c9a961;
+}
+
+.notif-row--off {
+  opacity: 0.65;
+}
+
+.notif-row-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.notif-row-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.notif-row-time {
+  font-size: 0.82rem;
+  color: #6b5c48;
+  margin-bottom: 10px;
+}
+
+.notif-row-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .notif-row-fields {
+    grid-template-columns: 1fr;
+  }
+}
