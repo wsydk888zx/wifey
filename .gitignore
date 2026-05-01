@@ -15,6 +15,9 @@ coverage/
 .vite/
 .cache/
 
+# Vercel — never commit pre-built output, it overrides the actual build
+.vercel/
+
 # Logs and temporary files
 *.log
 npm-debug.log*
