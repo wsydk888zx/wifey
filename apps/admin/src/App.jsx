@@ -983,6 +983,20 @@ function AdminApp({ session }) {
     }
   };
 
+  const handleSaveDraft = async () => {
+    if (!supabase) {
+      setNotice({ type: 'warning', text: 'No Supabase connection — changes auto-save when connected.' });
+      return;
+    }
+    try {
+      await saveAdminDraft(supabase, draft);
+      setSavedFingerprint(createDraftFingerprint(draft));
+      setNotice({ type: 'success', text: 'Draft saved.' });
+    } catch (err) {
+      setNotice({ type: 'error', text: `Save failed: ${err.message}` });
+    }
+  };
+
   const handleResetDraft = () => {
     clearAdminDraftStorage();
     const nextDraft = createDefaultAdminDraft(defaultContent, defaultFlowMap);
