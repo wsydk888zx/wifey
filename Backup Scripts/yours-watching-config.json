@@ -1,0 +1,832 @@
+{
+  "content": {
+    "prologue": {
+      "lines": [
+        "Five days. Ten envelopes. A story written for you alone.",
+        "Each morning and each evening, a sealed letter arrives.",
+        "Your choices shape every word of it.",
+        "Read when I send. Answer honestly. Do completely.",
+        "I am always watching. I already know which one you'll reach for."
+      ],
+      "signoff": "— Make them honestly."
+    },
+    "days": [
+      {
+        "day": 1,
+        "theme": "Anticipation",
+        "envelopes": [
+          {
+            "id": "d1m",
+            "slot": "morning",
+            "timeLabel": "Morning",
+            "label": "Day One · Morning",
+            "sealMotif": "I",
+            "branchOnly": false,
+            "intro": "You find it waiting — a single envelope, cream-coloured, your name written across it in my hand. The ink is deliberate. Unhurried.",
+            "choices": [
+              {
+                "id": "d1m-ribbon",
+                "title": "A Length of Black Silk Ribbon",
+                "hint": "Sheer, personal, impossible to ignore.",
+                "card": {
+                  "heading": "Tie it around your wrist. Wear it all day.",
+                  "body": "Black silk ribbon, cool and soft.\n\nTie it around your wrist. Wear it all day — wherever you go, whatever you do. You will not take it off until I say.\n\nNo one will know. Only you. Only me.\n\nEvery time you feel it, think about why it is there. In the afternoon, waiting in line somewhere, press your thumb against it and feel the day tilt slightly toward something else.",
+                  "rule": "Do not take it off. Come back tonight."
+                }
+              },
+              {
+                "id": "d1m-lingerie",
+                "title": "Something Silk, Impossibly Small",
+                "hint": "Put it on now. Wear it under everything.",
+                "card": {
+                  "heading": "Put it on now. Wear it under your clothes all day.",
+                  "body": "A box. Inside: something silk that covers almost nothing.\n\nPut it on now and wear it under your clothes all day. Go about your normal life. I will be thinking about it the entire time.\n\nMeetings, errands, ordinary conversations — the whole time it is there, my idea pressed against your skin, a private fact that belongs only to the two of us.\n\nYou will be aware of it constantly.",
+                  "rule": "By evening you will be more than ready for whatever comes next."
+                }
+              },
+              {
+                "id": "d1m-collar",
+                "title": "A Delicate Chain Collar",
+                "hint": "It reads as jewellery to everyone else.",
+                "card": {
+                  "heading": "Wear this today. It means you are mine.",
+                  "body": "A thin delicate chain with a small crimson stone — something that reads as jewellery to everyone else.\n\nWear this today. It means you are mine. You already knew that. Now you have something to touch when you remember it.\n\nThroughout the day you will touch it without meaning to — at your desk, in the car, once during a conversation with someone who has no idea. Each time you do, think of me.",
+                  "rule": "By the time evening comes the anticipation will have been building for so many hours you'll open the next envelope before I even send it."
+                }
+              }
+            ]
+          },
+          {
+            "id": "d1e",
+            "slot": "evening",
+            "timeLabel": "Evening",
+            "label": "Day One · Evening",
+            "sealMotif": "I",
+            "branchOnly": false,
+            "intro": "There's a second package waiting when you get home. Smaller. Quieter. Your name on it in my hand. You've been carrying me all day — tonight I'm giving you something back.",
+            "choices": [
+              {
+                "id": "d1e-bed",
+                "title": "The Bedroom — Soft Lights, Open Page",
+                "hint": "The most private room. Nowhere to be but here.",
+                "card": {
+                  "heading": "The bedroom. Lights low. The whole night.",
+                  "body": "You tear away the brown paper and there it is: a hardcover, beautiful in a way that makes you pause. A bookmark already placed. A card tucked at the front:\n\n*I thought about what you'd actually want. Not what would impress you — what you'd reach for if no one was watching. This is it. Tonight is yours.*\n\nChange into something soft. Light something. Take the book to bed.\n\nFor the next few hours there is nothing you're supposed to be doing. No edge to walk. No task to complete. Just you, disappearing into something I chose with care because I know exactly who you are when you're not performing for anyone.\n\nYou read until your eyes are heavy. The book is still open when you fall asleep.",
+                  "rule": "In the morning, tell me the first line. I want to hear you describe it."
+                }
+              },
+              {
+                "id": "d1e-couch",
+                "title": "The Couch — Wine, Long Hours",
+                "hint": "Where he watches you. Tonight it belongs entirely to you.",
+                "card": {
+                  "heading": "The couch. A drink. Hours.",
+                  "body": "Brown paper, your name, a ribbon. Inside: a hardcover that makes you exhale softly when you see it. Something chosen specifically for the version of you I think about when you're not looking.\n\nA card: *No instructions tonight. I just wanted you to have this.*\n\nPour something. Light a candle if the mood calls for it. Settle into the couch — the one I sit in when I watch you across the room — and open to page one.\n\nThe hours go soft. You stop tracking time. You stay there much longer than you planned, reading past the point where you said you'd stop.\n\nThe whole evening softens around the edges. That was the point.",
+                  "rule": "Sleep well. The story picks back up tomorrow."
+                }
+              },
+              {
+                "id": "d1e-floor",
+                "title": "The Floor — A Nest, Just You",
+                "hint": "Deliberate. Fully committed. Nothing half-done.",
+                "card": {
+                  "heading": "The floor. Make it yours.",
+                  "body": "The package is smaller than this morning's envelope. You open it slowly — paper, ribbon, a hardcover with real weight to it. Beautiful cover. A note tucked inside:\n\n*This is for you. Not us. Just you. Spend the evening with it and don't think about tomorrow.*\n\nPull the blanket off the couch. Stack the pillows. Build yourself a small world on the floor — slightly absurd, entirely intentional. Then open to page one.\n\nThere's something about choosing the floor that is its own kind of statement: fully committed, slightly unusual, and completely yours. You're not waiting for anything. You're already here.\n\nYou read until it's late. The world doesn't intrude. I knew it wouldn't.",
+                  "rule": "In the morning, the book stays where you left it. So does the feeling."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "day": 2,
+        "theme": "Obedience",
+        "envelopes": [
+          {
+            "id": "d2m",
+            "slot": "morning",
+            "timeLabel": "Morning",
+            "label": "Day Two · Morning",
+            "sealMotif": "II",
+            "branchOnly": false,
+            "intro": "They arrived early — stems wrapped in black paper, a card tucked at the center. Your name on it in a handwriting you know. The envelope is underneath the flowers. Read the card first.",
+            "choices": [
+              {
+                "id": "d2m-slow",
+                "title": "Dark Red — Commanding, Certain",
+                "hint": "The kind that fills a room. The kind that makes a statement.",
+                "card": {
+                  "heading": "Put them somewhere you'll see them all day. Then read on.",
+                  "body": "Dark red roses in black paper. The card reads: *You looked beautiful yesterday. Today I want you restless.*\n\nArrange them where you'll catch them from every angle — the counter, the windowsill, visible from wherever you spend most of your hours.\n\nNow the envelope.\n\nThree times today — morning, midday, late afternoon — find ten private minutes.\n\nTake your time getting there. Touch yourself the way I would: unhurried, deliberate, entirely focused on building the sensation until you are one breath from the edge. Then stop.\n\nLie still. Breathe through it. Wait until it passes.\n\nThe flowers are in the next room. That is not accidental.",
+                  "rule": "Log each session with a single word describing how close you were. I am keeping score."
+                }
+              },
+              {
+                "id": "d2m-direct",
+                "title": "White — Clean, Unexpected",
+                "hint": "Stark. Considered. Harder to ignore than you'd think.",
+                "card": {
+                  "heading": "They're already changing the room. So are the instructions.",
+                  "body": "White flowers in black paper — the contrast is exact. The card reads: *I was thinking about you last night. I want you thinking about me all day.*\n\nArrange them somewhere prominent. Let them change the room the way you change it when you walk in.\n\nThree times today — morning, midday, late afternoon — ten private minutes.\n\nGo directly this time. You know exactly what works. Take yourself there cleanly, right to the edge — sharp, precise, immediate — then stop cold.\n\nHold yourself in that moment. Breathe through it. Pull back slowly.\n\nAt least two hours between each. The flowers will be there when you pass them in the hall.",
+                  "rule": "The restraint is the gift. Report back tonight."
+                }
+              },
+              {
+                "id": "d2m-tease",
+                "title": "Dark Blooms — Unusual, Charged",
+                "hint": "Not what anyone expected. Exactly what the day calls for.",
+                "card": {
+                  "heading": "Strange flowers for a strange, charged day.",
+                  "body": "Something dark and unusual — blooms that shouldn't work together but do. The card: *You won't know what to do with yourself today. Good.*\n\nPlace them somewhere unexpected. Not where flowers usually go. Let them be slightly out of place in the best way.\n\nThree times today — morning, midday, late afternoon — find privacy.\n\nDo it the way I would if I were the one making you wait: not directly, not efficiently, but sideways. Almost where you want it, then deliberately to the side of it. Build the frustration until it becomes remarkable. Then stop entirely.\n\nThat ache — the specific wanting of almost — belongs to me. I have been collecting it since yesterday.",
+                  "rule": "By evening you'll be so ready that the word alone will almost be enough."
+                }
+              }
+            ]
+          },
+          {
+            "id": "d2e",
+            "slot": "evening",
+            "timeLabel": "Evening",
+            "label": "Day Two · Evening",
+            "sealMotif": "II",
+            "branchOnly": false,
+            "intro": "Tonight you finish — but on my terms. At nine o'clock, you set up your phone on a stand and call me on FaceTime.",
+            "choices": [
+              {
+                "id": "d3m-vibe",
+                "title": "The Vibrator",
+                "hint": "The one I know about. Tonight I direct exactly how.",
+                "card": {
+                  "heading": "Nine o'clock. Camera on your face. Follow exactly.",
+                  "body": "At nine o'clock you set up your phone on a stand. You call me on FaceTime.\n\nThe camera does not move from your face for the entire call. I do not need to see anything else tonight — your face is the thing I want. The sounds you make. The way your expression changes. The moment your eyes lose focus.\n\nYou use the vibrator. I tell you when to start, when to slow down, how to hold it. My voice stays low and continuous in your ear.\n\nYou do not finish until I say the word.",
+                  "rule": "When it is over, stay on the call. I want to see your face after too."
+                }
+              },
+              {
+                "id": "d3m-hands",
+                "title": "Just Your Hands",
+                "hint": "Your hands become my hands.",
+                "card": {
+                  "heading": "Nine o'clock. Camera on your face. Your hands follow my voice.",
+                  "body": "At nine o'clock you set up your phone on a stand. You call me on FaceTime.\n\nThe camera does not move from your face for the entire call.\n\nYour hands only — I direct every movement. Where, how much pressure, when to slow down. Your hands become my hands. It is more intimate than you expected.\n\nYou do not finish until I say the word.",
+                  "rule": "When it is over, stay on the call. I want to see your face after too."
+                }
+              },
+              {
+                "id": "d3m-both",
+                "title": "Both — I Decide When",
+                "hint": "I switch without warning. You follow.",
+                "card": {
+                  "heading": "Nine o'clock. Camera on your face. I switch when I choose.",
+                  "body": "At nine o'clock you set up your phone on a stand. You call me on FaceTime.\n\nThe camera does not move from your face for the entire call.\n\nBoth — hands and toy. I switch between them whenever I choose, without warning. You follow. You have no idea what comes next and that is entirely the point.\n\nYou do not finish until I say the word.",
+                  "rule": "When it is over, stay on the call. I want to see your face after too."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "day": 3,
+        "theme": "Recognition",
+        "envelopes": [
+          {
+            "id": "d3m",
+            "slot": "morning",
+            "timeLabel": "Morning",
+            "label": "Day Three · Morning",
+            "sealMotif": "III",
+            "branchOnly": false,
+            "intro": "Today is about seeing yourself the way I see you. Not costume. Not performance. Beauty, chosen carefully, and worn on purpose from the first hour of the day.",
+            "choices": [
+              {
+                "id": "d3m-black",
+                "title": "The Black Dress",
+                "hint": "Elegant, close-fitted, impossible to forget.",
+                "card": {
+                  "heading": "Wear the black dress. Heels. Makeup. The whole thing.",
+                  "body": "The black one. The one that changes your posture the moment it is on.\n\nDo all of it properly today: heels, makeup, your hair done, the details you would only bother with if the evening mattered. It does.\n\nI do not want you dressed up as a joke or a dare. I want you to feel devastating. Composed. Beautiful enough that you catch your own reflection and have to look twice.\n\nWear it all day with intention. Move through ordinary hours already carrying the knowledge of tonight.",
+                  "rule": "Do not underplay it. I want the whole version of you.",
+                  "inputs": [
+                    {
+                      "id": "detail_black",
+                      "label": "What detail makes you feel most beautiful",
+                      "type": "text",
+                      "required": false,
+                      "placeholder": "A detail I should notice first"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "d3m-silk",
+                "title": "The Silk Dress",
+                "hint": "Soft, expensive-looking, quietly dangerous.",
+                "card": {
+                  "heading": "Choose the silk one and let it do what it does.",
+                  "body": "The silk dress is for a different kind of confidence.\n\nHeels, makeup, your hair done, perfume if you want it. No corners cut. No pretending this is casual. I want you to feel polished and unmistakably desired before the evening even begins.\n\nThe silk should move when you move. The dress should remind you all day that I was thinking about exactly this version of you: elegant, feminine, and impossible to dismiss.\n\nIf someone asks why you look so good today, you do not tell them.",
+                  "rule": "Take your time getting ready. The getting ready is part of it.",
+                  "inputs": [
+                    {
+                      "id": "detail_silk",
+                      "label": "What part of this look feels most like you",
+                      "type": "text",
+                      "required": false,
+                      "placeholder": "A detail I should pay attention to"
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "d3m-red",
+                "title": "The Dress That Feels Boldest",
+                "hint": "The one that makes you stand taller the instant it is on.",
+                "card": {
+                  "heading": "Wear the one that makes you feel dangerous.",
+                  "body": "Not vulgar. Not careless. Beautiful in the way that makes the room change slightly when you walk into it.\n\nToday I want the full effort: heels, makeup, your hair exactly the way you like it when you want to feel unforgettable. Choose the dress that makes you feel boldest and wear it as if you know precisely what it does.\n\nI want you to feel as sexy and beautiful as I already believe you are. The dress is only part of that. The rest is the way you carry yourself in it.\n\nLet the whole day sharpen around that feeling.",
+                  "rule": "Every mirror today is part of the game. Do not look away too quickly.",
+                  "inputs": [
+                    {
+                      "id": "detail_bold",
+                      "label": "What makes this dress the right one",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "A sentence for me about why you chose it"
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "d3e",
+            "slot": "evening",
+            "timeLabel": "Evening",
+            "label": "Day Three · Evening",
+            "sealMotif": "III",
+            "branchOnly": false,
+            "intro": "You've been beautiful all day. Now I want to taste that confidence. But not like this. Not yet.",
+            "choices": [
+              {
+                "id": "d3e-rest",
+                "title": "Stay on the Call — Just Breathe",
+                "hint": "My face. The quiet. Your face after.",
+                "card": {
+                  "heading": "Lights low. Come here.",
+                  "body": "You enter the room already aware of me. I take you by the throat — gently — and kiss you like I've been thinking about this all day. Because I have.\n\nIt's slow. It's deliberate. Your dress is still on. My hands stay exactly where they are. The kiss deepens until you're the one pushing closer, and then I pull back just enough to feel you follow.\n\nWe kiss until the room tilts slightly. Until you stop thinking about how you look and only think about my mouth.\n\nThen I stop. Completely.\n\n\"Not yet,\" I whisper.\n\nI am calm. You are not.",
+                  "rule": "Go to bed still tasting it. Tomorrow has more."
+                }
+              },
+              {
+                "id": "d3e-mirror",
+                "title": "The Mirror — After",
+                "hint": "Watch yourself the way I just did.",
+                "card": {
+                  "heading": "The couch. Sit with me first.",
+                  "body": "I pull you down beside me, still in the dress. We kiss for longer than you expected — not frantic, but thorough. Deep enough that you lose track of time.\n\nMy hand finds your knee under the hem. It stays there, moving slowly up your thigh as I kiss you until you're breathing harder.\n\nJust as it starts to feel like something more might happen, I stop and rest my forehead against yours.\n\n\"Tomorrow,\" I say. \"Tomorrow I take more time.\"\n\nYou sit there, still wanting, still in the dress, already thinking about tomorrow.",
+                  "rule": "Sleep in the dress if you want to. I like knowing you will."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "day": 4,
+        "id": "day-4",
+        "theme": "Surrender",
+        "envelopes": [
+          {
+            "id": "d4m",
+            "slot": "morning",
+            "timeLabel": "Morning",
+            "label": "Day Four · Morning",
+            "sealMotif": "IV",
+            "branchOnly": false,
+            "intro": "This is the day I make you wait. Choose how long you can stand it.",
+            "choices": [
+              {
+                "id": "d4m-fifteen",
+                "title": "Fifteen Minutes",
+                "hint": "Quick. Intense. Not nearly enough.",
+                "card": {
+                  "heading": "Fifteen minutes. That's all I'm giving you.",
+                  "body": "Tonight at eight o'clock, the door closes. We have exactly fifteen minutes.\n\nThat's time enough to kiss you until your hands shake. Time enough to taste your neck. Time enough to feel you try to pull me closer. Time enough for me to feel how badly you want more.\n\nBut it's not time enough for anything beyond that. The limit is the point. By minute fourteen, you'll be frustrated enough to beg.\n\nI'm counting on it.",
+                  "rule": "When the timer runs out, I leave. Be ready for how that feels.",
+                  "inputs": [
+                    {
+                      "id": "timer_fifteen",
+                      "label": "I understand this will leave me wanting",
+                      "type": "checkbox",
+                      "required": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "d4m-twenty",
+                "title": "Twenty Minutes",
+                "hint": "Long enough to get lost. Not long enough to finish.",
+                "card": {
+                  "heading": "Twenty minutes. I'll use every second.",
+                  "body": "Tonight at eight o'clock, we have twenty minutes of absolute focus. Nothing else matters. No phone. No interruptions. Only this.\n\nTwenty minutes is long enough to undress you slowly. Long enough to kiss you everywhere but where you actually want me. Long enough for you to start making sounds you didn't know you could make.\n\nIt's long enough that by the end, you'll be begging for just five more minutes. I won't give them to you.",
+                  "rule": "When time is up, we're done. Finish the rest yourself later, thinking about me.",
+                  "inputs": [
+                    {
+                      "id": "timer_twenty",
+                      "label": "I understand the frustration is the point",
+                      "type": "checkbox",
+                      "required": true
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "d4m-thirty",
+                "title": "Thirty Minutes",
+                "hint": "Long enough to feel worshipped. Still not long enough.",
+                "card": {
+                  "heading": "Thirty minutes. I want to take my time with you.",
+                  "body": "Tonight at eight o'clock, we have a full thirty minutes. This is generous by design.\n\nThirty minutes is time enough to trace every line of your body with my mouth. Enough to feel you arch against me. Enough to bring you right to the edge and stop there, watching your face.\n\nEnough time that you start to think maybe this time will be different. Maybe tonight I'll give you what you're begging for.\n\nI won't. But for a full thirty minutes, you can hope.",
+                  "rule": "At minute twenty-nine, you'll understand why I chose this number for you.",
+                  "inputs": [
+                    {
+                      "id": "timer_thirty",
+                      "label": "I accept thirty minutes is the limit",
+                      "type": "checkbox",
+                      "required": true
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "d4e",
+            "slot": "evening",
+            "timeLabel": "Evening",
+            "label": "Day Four · Evening",
+            "sealMotif": "IV",
+            "branchOnly": false,
+            "choicesHeading": "After The Wait",
+            "choicesIntro": "Time is up. How does the rest of the night unfold?",
+            "intro": "The timer was relentless. You were ready for more. That's exactly how this should feel.",
+            "choices": [
+              {
+                "id": "d4e-alone",
+                "title": "You Leave Me To It",
+                "hint": "I'm alone with my frustration and your voice in my head.",
+                "card": {
+                  "heading": "You leave. I stay, wanting.",
+                  "body": "The moment the timer hits zero, you're gone. The door closes. Your coat is not on the hook. Your voice is not in the apartment.\n\nI am still tasting your mouth. Still feeling the ghost of your hands. Still completely, impossibly not finished.\n\nI lie in the dark, still in the clothes you touched, and I think about the way you smiled right before you left. Knowing exactly what you were leaving me with.\n\nYou did that on purpose. We both know it.",
+                  "rule": "Come back tomorrow. I have things to tell you about waiting."
+                }
+              },
+              {
+                "id": "d4e-silent",
+                "title": "You Hold Me Without Moving",
+                "hint": "Close but untouchable. Almost worse than leaving.",
+                "card": {
+                  "heading": "You hold me and say nothing.",
+                  "body": "After the timer stops, you pull me close and just hold me. No more kissing. No more touching. Just your arms around me and your chin against my hair.\n\nYou don't speak. The silence is worse than if you'd left. I can feel my own heartbeat against your chest. Feel how badly I want something you're not giving.\n\nYou stay like this for ten more minutes. Long enough for the desperation to become almost unbearable. Long enough that I stop trying to move closer and just surrender to the feeling of almost.\n\nThen you let go and say, \"Tomorrow.\"",
+                  "rule": "Sleep knowing tomorrow comes and so will you — eventually."
+                }
+              },
+              {
+                "id": "d4e-choice",
+                "title": "You Let Me Decide",
+                "hint": "The cruelty is that you'll say yes to anything right now.",
+                "card": {
+                  "heading": "One question: what do you need right now?",
+                  "body": "Timer finished. You pull back and look at me — still wanting, still breathless.\n\n\"What do you need,\" you ask.\n\nThe cruelty of this question is that you already know I'll ask for more of you. That I'm far enough gone I'll take anything. That in this moment, I have no defenses left.\n\nYou'll say yes to whatever I ask for. We both know that's why you're asking.\n\nThe real choice was never about what I would say. It was about whether you'd be willing to ask the question, knowing what my answer would be.",
+                  "rule": "Tomorrow belongs to you. Design it honestly."
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "day": 5,
+        "id": "day-5",
+        "theme": "Final Night",
+        "envelopes": [
+          {
+            "id": "d5hm",
+            "slot": "morning",
+            "timeLabel": "Morning",
+            "label": "Day Five · Morning",
+            "sealMotif": "V",
+            "branchOnly": true,
+            "intro": "You let me choose. That decision meant something. The plan already exists — tonight moves exactly the way I designed it. You don't need to prepare much. You need to answer these honestly before the evening starts.",
+            "choices": [
+              {
+                "id": "d5hm-ready",
+                "title": "I Follow The Plan",
+                "hint": "No edits. No negotiations. Complete trust.",
+                "card": {
+                  "heading": "Tonight was built while you were sleeping. Tell me where you are before it begins.",
+                  "body": "The room is chosen. The pace is decided. The order of everything has been thought through carefully.\n\nYou are not designing anything tonight. You are arriving.\n\nBefore the evening starts, I want to know what's underneath — not so you can change anything, but so I know what I'm walking toward.",
+                  "rule": "By evening, you are not improvising. You are arriving.",
+                  "inputs": [
+                    {
+                      "id": "ready_feeling",
+                      "label": "What are you feeling right now, knowing tonight is already decided",
+                      "type": "textarea",
+                      "required": true,
+                      "placeholder": "Honest. Only that."
+                    },
+                    {
+                      "id": "nervous_about",
+                      "label": "What are you most nervous about",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "Tell me. I want to know before we begin."
+                    },
+                    {
+                      "id": "looking_forward",
+                      "label": "What are you most looking forward to",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "Say it out loud, even just here."
+                    },
+                    {
+                      "id": "hard_stop",
+                      "label": "Is there anything that should not happen tonight — anything at all",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "I take this seriously. Tell me anything."
+                    },
+                    {
+                      "id": "last_words",
+                      "label": "Anything you want to say before I take over completely",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "Last words. Before tonight begins."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "d5he",
+            "slot": "evening",
+            "timeLabel": "Evening",
+            "label": "Day Five · Evening",
+            "sealMotif": "V",
+            "branchOnly": true,
+            "choicesHeading": "The Night I Built",
+            "choicesIntro": "There is only one path here. The choice was yesterday.",
+            "intro": "The final envelope does not ask what you want. It tells you where to be, how to hold yourself, and what kind of night this will become.",
+            "choices": [
+              {
+                "id": "d5he-final",
+                "title": "Follow Exactly",
+                "hint": "The authored ending. My hand on the structure of it.",
+                "card": {
+                  "heading": "Tonight, you let the plan close around you.",
+                  "body": "You enter the room already aware of me. The details are not accidental. The light, the music, the pace, the distance between one instruction and the next — all of it was chosen with care.\n\nYou are not being rushed. You are being placed.\n\nWhat matters most is not one specific act, but the fact that neither of us is pretending anymore. The story is no longer rehearsal. It is recognition.\n\nLater, in the quiet that follows, I tell you exactly which version of you I wanted tonight — and why it was this one.",
+                  "rule": "Keep the room exactly as it is for a little while longer."
+                }
+              }
+            ]
+          },
+          {
+            "id": "d5sm",
+            "slot": "morning",
+            "timeLabel": "Morning",
+            "label": "Day Five · Morning",
+            "sealMotif": "V",
+            "branchOnly": true,
+            "branchGroup": "day-5-she",
+            "intro": "You asked to design the last night yourself. That took something real. Answer all of this — completely, honestly, nothing softened. I am building tonight around exactly what you tell me.",
+            "choices": [
+              {
+                "id": "d5sm-design",
+                "title": "I Choose The Shape Of Tonight",
+                "hint": "Honest. Specific. Nothing held back.",
+                "card": {
+                  "heading": "Answer all of this. I read every word.",
+                  "body": "Tonight belongs to you. But I need the truth of it first.\n\nDon't edit yourself. Don't be polite or careful. Don't give me the version you think I want — give me the one who already knows exactly what she wants, the part of you that hasn't said it out loud yet.\n\nThis is the only time I'm asking. After this, I build it.",
+                  "rule": "By evening you want the right night, not the safe one. Tell me how to give it to you.",
+                  "inputs": [
+                    {
+                      "id": "setting",
+                      "label": "Where does tonight begin",
+                      "type": "select",
+                      "required": true,
+                      "options": [
+                        "Bedroom",
+                        "Guest room",
+                        "Living room floor",
+                        "Bathroom — bath ritual",
+                        "Mirror-facing room"
+                      ],
+                      "placeholder": "Choose the place"
+                    },
+                    {
+                      "id": "atmosphere",
+                      "label": "The mood in the room",
+                      "type": "select",
+                      "required": true,
+                      "options": [
+                        "Soft and slow",
+                        "Quiet and reverent",
+                        "Playful and teasing",
+                        "Tense and structured",
+                        "Cinematic and charged"
+                      ],
+                      "placeholder": "Choose the atmosphere"
+                    },
+                    {
+                      "id": "what_you_wear",
+                      "label": "What are you wearing when tonight starts",
+                      "type": "select",
+                      "required": false,
+                      "options": [
+                        "Silk / satin",
+                        "Oversized shirt, nothing underneath",
+                        "Lingerie",
+                        "Robe only",
+                        "Nothing at all"
+                      ],
+                      "placeholder": "Choose"
+                    },
+                    {
+                      "id": "first_touch",
+                      "label": "Where do you want my hands first — be specific",
+                      "type": "textarea",
+                      "required": true,
+                      "placeholder": "Don't generalize. Tell me exactly where."
+                    },
+                    {
+                      "id": "mouth",
+                      "label": "What do you want my mouth to do tonight",
+                      "type": "textarea",
+                      "required": true,
+                      "placeholder": "Don't soften this. Tell me plainly."
+                    },
+                    {
+                      "id": "the_thing",
+                      "label": "The specific thing you've been thinking about but haven't asked for yet",
+                      "type": "textarea",
+                      "required": true,
+                      "placeholder": "This is the question that matters most. Don't skip it."
+                    },
+                    {
+                      "id": "control_style",
+                      "label": "How much control do you want to give up tonight",
+                      "type": "select",
+                      "required": false,
+                      "options": [
+                        "None — I stay in control",
+                        "Hands guided gently",
+                        "Wrists restrained",
+                        "Blindfolded",
+                        "Complete surrender — I follow every instruction"
+                      ],
+                      "placeholder": "Choose"
+                    },
+                    {
+                      "id": "words_you_want",
+                      "label": "What do you want to hear me say during",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "Words. A phrase. The tone of voice. Whatever comes to mind."
+                    },
+                    {
+                      "id": "words_you_want_to_say",
+                      "label": "What do you want to say out loud tonight that you never have",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "Say it here first. To me. Then say it tonight."
+                    },
+                    {
+                      "id": "pace_description",
+                      "label": "Describe the pace you want — in your own words",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "Fast, slow, agonizing, unpredictable — what does your body want?"
+                    },
+                    {
+                      "id": "edge_question",
+                      "label": "Edge or finish — what do you want",
+                      "type": "select",
+                      "required": false,
+                      "options": [
+                        "Edge me as many times as you want before letting me finish",
+                        "Edge me once, then give me everything",
+                        "I want to finish the moment I get close — don't hold me back",
+                        "You decide"
+                      ],
+                      "placeholder": "Choose"
+                    },
+                    {
+                      "id": "sensory",
+                      "label": "Any sensory element that belongs tonight",
+                      "type": "select",
+                      "required": false,
+                      "options": [
+                        "Candlelight only",
+                        "A specific playlist",
+                        "Blindfold",
+                        "Temperature contrast",
+                        "Massage oil",
+                        "Silk ribbon"
+                      ],
+                      "placeholder": "Choose"
+                    },
+                    {
+                      "id": "toys",
+                      "label": "Toy preference",
+                      "type": "select",
+                      "required": false,
+                      "options": [
+                        "None",
+                        "One toy, your choice",
+                        "One toy, my choice",
+                        "Toy with your direct instructions"
+                      ],
+                      "placeholder": "Choose"
+                    },
+                    {
+                      "id": "intensity",
+                      "label": "Intensity",
+                      "type": "select",
+                      "required": true,
+                      "options": [
+                        "Gentle",
+                        "Medium",
+                        "High",
+                        "I want to be completely undone"
+                      ],
+                      "placeholder": "Choose"
+                    },
+                    {
+                      "id": "afraid_to_ask",
+                      "label": "Is there something you're afraid I won't give you tonight",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "This is a safe question. Answer it honestly."
+                    },
+                    {
+                      "id": "hard_stop_she",
+                      "label": "Is there anything that should not happen tonight",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "I take this seriously. Anything at all."
+                    },
+                    {
+                      "id": "aftercare",
+                      "label": "What do you need after",
+                      "type": "select",
+                      "required": false,
+                      "options": [
+                        "Held quietly",
+                        "Praised out loud",
+                        "Warm shower together",
+                        "Blanket and quiet",
+                        "Talk afterward",
+                        "A written note from you"
+                      ],
+                      "placeholder": "Choose"
+                    },
+                    {
+                      "id": "closing_tone",
+                      "label": "In your own words — what do you want the ending of tonight to feel like",
+                      "type": "textarea",
+                      "required": false,
+                      "placeholder": "Describe it however it comes. I'll make it exactly that."
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "id": "d5se",
+            "slot": "evening",
+            "timeLabel": "Evening",
+            "label": "Day Five · Evening",
+            "sealMotif": "V",
+            "branchOnly": true,
+            "branchGroup": "day-5-she",
+            "choicesHeading": "The Night She Asked For",
+            "choicesIntro": "Pick the tone that comes closest to what you asked me to make real.",
+            "intro": "Tonight reflects what you chose this morning. The room is no longer generic. The mood is no longer accidental. It feels built for you because it was.",
+            "choices": [
+              {
+                "id": "d5se-soft",
+                "title": "Soft and Ceremonial",
+                "hint": "Tender, deliberate, private.",
+                "card": {
+                  "heading": "Let the room stay quiet long enough to matter.",
+                  "body": "Everything has been arranged to slow you down. The room asks for attention instead of performance. I notice what you chose and do not waste the knowledge.\n\nThere is no need for spectacle. The intensity comes from accuracy — from being known well enough that the details land exactly where they should.\n\nLater, the tenderness of it surprises you by how completely it steadies you.",
+                  "rule": "Stay in the room after. Let the mood finish settling."
+                }
+              },
+              {
+                "id": "d5se-playful",
+                "title": "Playful and Teasing",
+                "hint": "A smile in the tension. Still private. Still exact.",
+                "card": {
+                  "heading": "The night tilts in and out of seriousness on purpose.",
+                  "body": "I use your choices against you in the best possible way — not to contradict them, but to make them brighter.\n\nThe room feels lighter, but not casual. You are still being watched carefully. You are still being read. The pleasure comes from how easily I can move you from laughter into stillness and back again.\n\nBy the end of it, you realize the playfulness made the intimacy sharper, not smaller.",
+                  "rule": "Do not clean up immediately. Keep one detail in place until morning."
+                }
+              },
+              {
+                "id": "d5se-exacting",
+                "title": "Intense and Exacting",
+                "hint": "Structured. Focused. No wasted motion.",
+                "card": {
+                  "heading": "I take your answers seriously enough to be strict with them.",
+                  "body": "The room has edges tonight. The instructions are clean. The pacing is controlled. Nothing sloppy survives the first few minutes.\n\nBecause you were honest earlier, I know exactly how far to press and where to stop. That precision becomes its own kind of care.\n\nWhen it ends, what remains is not chaos but the strange calm that follows being understood too well to hide.",
+                  "rule": "Afterward, write down the one instruction you will remember longest."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "defaultFlowMap": {
+      "rules": [
+        {
+          "id": "day4-to-day5-he-alone",
+          "sourceChoiceId": "d4e-alone",
+          "sourceFieldId": "",
+          "operator": "always",
+          "value": "",
+          "targetEnvelopeId": "d5hm"
+        },
+        {
+          "id": "day4-to-day5-he-silent",
+          "sourceChoiceId": "d4e-silent",
+          "sourceFieldId": "",
+          "operator": "always",
+          "value": "",
+          "targetEnvelopeId": "d5hm"
+        },
+        {
+          "id": "day4-to-day5-she-choice",
+          "sourceChoiceId": "d4e-choice",
+          "sourceFieldId": "",
+          "operator": "always",
+          "value": "",
+          "targetEnvelopeId": "d5sm"
+        }
+      ]
+    },
+    "interrupts": [
+      "I know you just opened it.",
+      "Don't rush. I like watching you read it twice.",
+      "Your hand is shaking. Steady it.",
+      "Good girl.",
+      "I can tell you're still dressed. Fix that.",
+      "Slower.",
+      "You're thinking about disobeying. Don't.",
+      "Breathe.",
+      "I can see the way you're sitting. Uncross.",
+      "Count to ten before you decide.",
+      "Your pulse is louder than you think.",
+      "That's the choice I wanted you to make.",
+      "Say it out loud, even if the room is empty.",
+      "Yes. That one.",
+      "I'm closer than you think.",
+      "I've been thinking about you all day.",
+      "Do exactly what I said. Not approximately.",
+      "I see you hesitating. Stop."
+    ]
+  },
+  "flowMap": {
+    "rules": [
+      {
+        "id": "day4-to-day5-he-alone",
+        "sourceChoiceId": "d4e-alone",
+        "sourceFieldId": "",
+        "operator": "always",
+        "value": "",
+        "targetEnvelopeId": "d5hm"
+      },
+      {
+        "id": "day4-to-day5-he-silent",
+        "sourceChoiceId": "d4e-silent",
+        "sourceFieldId": "",
+        "operator": "always",
+        "value": "",
+        "targetEnvelopeId": "d5hm"
+      },
+      {
+        "id": "day4-to-day5-she-choice",
+        "sourceChoiceId": "d4e-choice",
+        "sourceFieldId": "",
+        "operator": "always",
+        "value": "",
+        "targetEnvelopeId": "d5sm"
+      }
+    ]
+  }
+}

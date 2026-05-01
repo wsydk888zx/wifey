@@ -21,7 +21,34 @@ const supabase =
     ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
     : null;
 
-// ── Supabase state persistence ────────────────────────────────────────────────
+// ── Supabase story and state persistence ──────────────────────────────────────
+
+async function fetchPublishedStory() {
+  if (!supabase) return defaultContent;
+
+  try {
+    const { data: stories, error } = await supabase
+      .from('stories')
+      .select('*')
+      .eq('is_published', true)
+      .order('published_at', { ascending: false })
+      .limit(1);
+
+    if (error || !stories || stories.length === 0) {
+      console.warn('Failed to load published story, using default:', error);
+      return defaultContent;
+    }
+
+    const story = stories[0];
+    return {
+      prologue: story.prologue || { lines: [], signoff: '' },
+      days: Array.isArray(story.days) ? story.days : [],
+    };
+  } catch (err) {
+    console.error('Error fetching published story:', err);
+    return defaultContent;
+  }
+}
 
 async function fetchRemoteState() {
   if (!supabase) return null;
@@ -769,28 +796,17 @@ function App() {
 
   useEffect(() => {
     async function load() {
-      if (!supabase) {
-        setContent(normalizeContentModel(defaultContent));
-        setReady(true);
-        return;
-      }
+      // Load published story from Supabase (or use default)
+      const storyData = await fetchPublishedStory();
+      setContent(normalizeContentModel(storyData));
 
-      const [contentResult, stateResult] = await Promise.all([
-        supabase.from('story_content').select('content, flow_map').eq('id', 'main').single(),
-        fetchRemoteState(),
-      ]);
-
-      if (contentResult.data && !contentResult.error) {
-        const { tweaks: embedded, ...storyOnly } = contentResult.data.content;
-        setContent(normalizeContentModel(storyOnly));
-        if (embedded) setTweaks({ ...TWEAK_DEFAULTS, ...embedded });
-        const rawFlowMap = contentResult.data.flow_map || storyOnly.defaultFlowMap || { rules: [] };
-        setFlowMap(buildCompleteFlowMap(storyOnly, rawFlowMap));
-      } else {
-        setContent(normalizeContentModel(defaultContent));
-      }
-
+      // Load player state
+      const stateResult = await fetchRemoteState();
       setInitialState(stateResult || {});
+
+      // Build flow map from story content
+      setFlowMap(buildCompleteFlowMap(storyData, storyData.defaultFlowMap || { rules: [] }));
+
       setReady(true);
     }
 

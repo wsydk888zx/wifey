@@ -35,7 +35,10 @@ import {
   parseAdminImport,
   saveAdminDraft,
   subscribeToPlayerState,
-} from './adminStorage.js';
+  publishStory,
+  getStoryVersions,
+  rollbackToVersion,
+} from './supabaseStorage.js';
 
 const sections = ['Overview', 'Settings', 'Story', 'Flow', 'Responses', 'AI Drafts', 'Snapshots', 'Publish', 'Notifications'];
 const enabledSections = new Set(['Overview', 'Settings', 'Story', 'Flow', 'Responses', 'AI Drafts', 'Snapshots', 'Publish', 'Notifications']);
@@ -510,8 +513,13 @@ function App() {
 }
 
 function AdminApp({ session }) {
-  const [draft, setDraft] = useState(() => loadAdminDraft(defaultContent, defaultFlowMap));
-  const [savedFingerprint, setSavedFingerprint] = useState(() => createDraftFingerprint(draft));
+  const defaultDraft = createDefaultAdminDraft(defaultContent, defaultFlowMap);
+  const [draft, setDraft] = useState(defaultDraft);
+  const [savedFingerprint, setSavedFingerprint] = useState(() => createDraftFingerprint(defaultDraft));
+  const [isLoadingDraft, setIsLoadingDraft] = useState(true);
+  const [storyVersions, setStoryVersions] = useState([]);
+  const [publishLoading, setPublishLoading] = useState(false);
+  const [publishSuccess, setPublishSuccess] = useState('');
   const [notice, setNotice] = useState(null);
   const [snapshotName, setSnapshotName] = useState('');
   const [activeSection, setActiveSection] = useState('Overview');
@@ -530,6 +538,51 @@ function AdminApp({ session }) {
   const [aiDraftError, setAiDraftError] = useState('');
   const [aiDraftLoading, setAiDraftLoading] = useState(false);
   const [playerResponses, setPlayerResponses] = useState(null);
+
+  // Load draft from Supabase on mount
+  useEffect(() => {
+    async function loadDraft() {
+      if (!supabase) {
+        setIsLoadingDraft(false);
+        return;
+      }
+
+      try {
+        const loaded = await loadAdminDraft(supabase, defaultContent, defaultFlowMap);
+        setDraft(loaded);
+        setSavedFingerprint(createDraftFingerprint(loaded));
+
+        // Also load version history
+        if (loaded.storyId) {
+          const versions = await getStoryVersions(supabase, loaded.storyId);
+          setStoryVersions(versions);
+        }
+      } catch (err) {
+        console.error('Failed to load draft:', err);
+        setNotice({ type: 'error', text: 'Failed to load draft from Supabase' });
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    }
+
+    loadDraft();
+  }, []);
+
+  // Auto-save draft to Supabase
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (!supabase || isLoadingDraft) return;
+
+      try {
+        await saveAdminDraft(supabase, draft);
+        setSavedFingerprint(createDraftFingerprint(draft));
+      } catch (err) {
+        console.error('Failed to save draft:', err);
+      }
+    }, 2000); // Debounce saves by 2 seconds
+
+    return () => clearTimeout(timer);
+  }, [draft, supabase, isLoadingDraft]);
 
   useEffect(() => {
     if (!supabase) return;
@@ -890,28 +943,43 @@ function AdminApp({ session }) {
     (currentSnapshotRow ? 0 : 1);
   const canPublish = validation.errors.length === 0;
 
-  const publishDraftToSupabase = async (draftToPublish) => {
-    if (!supabase) return { error: 'No Supabase client' };
-    return supabase.from('story_content').upsert(
-      {
-        id: 'main',
-        content: { ...draftToPublish.content, tweaks: draftToPublish.tweaks },
-        flow_map: draftToPublish.flowMap || { rules: [] },
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' },
-    );
+  const handlePublishStory = async () => {
+    if (!supabase || !draft.storyId) {
+      setNotice({ type: 'error', text: 'Cannot publish: draft not ready' });
+      return;
+    }
+
+    setPublishLoading(true);
+    try {
+      const result = await publishStory(supabase, draft, `Published at ${new Date().toLocaleString()}`);
+      setPublishSuccess(`Published version ${result.versionNumber}`);
+      setNotice({ type: 'success', text: `Story published as version ${result.versionNumber}` });
+
+      // Reload versions
+      const versions = await getStoryVersions(supabase, draft.storyId);
+      setStoryVersions(versions);
+
+      setTimeout(() => setPublishSuccess(''), 3000);
+    } catch (err) {
+      console.error('Publish error:', err);
+      setNotice({ type: 'error', text: `Publish failed: ${err.message}` });
+    } finally {
+      setPublishLoading(false);
+    }
   };
 
-  const handleSaveDraft = async () => {
-    saveAdminDraft(draft);
-    setSavedFingerprint(createDraftFingerprint(draft));
-    setNotice({ tone: 'success', text: 'Saving to Supabase…' });
-    const { error } = await publishDraftToSupabase(draft);
-    if (error) {
-      setNotice({ tone: 'warning', text: `Saved locally. Supabase sync failed: ${error.message}` });
-    } else {
-      setNotice({ tone: 'success', text: 'Draft saved to browser storage and Supabase.' });
+  const handleRollback = async (versionId) => {
+    if (!supabase) return;
+
+    try {
+      const result = await rollbackToVersion(supabase, versionId);
+      const loaded = await loadAdminDraft(supabase, defaultContent, defaultFlowMap);
+      setDraft(loaded);
+      setSavedFingerprint(createDraftFingerprint(loaded));
+      setNotice({ type: 'success', text: `Rolled back to version ${result.versionNumber}` });
+    } catch (err) {
+      console.error('Rollback error:', err);
+      setNotice({ type: 'error', text: `Rollback failed: ${err.message}` });
     }
   };
 
@@ -972,21 +1040,16 @@ function AdminApp({ session }) {
       snapshots: [snapshot, ...draft.snapshots].slice(0, MAX_ADMIN_SNAPSHOTS),
     };
 
-    saveAdminDraft(nextDraft);
     setDraft(nextDraft);
     setSavedFingerprint(createDraftFingerprint(nextDraft));
     setSelectedSnapshotId(snapshot.id);
     setSnapshotName('');
     downloadAdminExport(createAdminExport(nextDraft), createReleaseFilename());
-
-    const { error: supabaseError } = await publishDraftToSupabase(nextDraft);
     setNotice({
-      tone: supabaseError ? 'warning' : validation.warnings.length ? 'warning' : 'success',
-      text: supabaseError
-        ? `Release exported locally. Supabase sync failed: ${supabaseError.message}`
-        : validation.warnings.length
-          ? 'Release snapshot saved, exported, and pushed to Supabase (with validation warnings).'
-          : 'Release snapshot saved, exported, and pushed to Supabase.',
+      type: validation.warnings.length ? 'warning' : 'success',
+      text: validation.warnings.length
+        ? 'Release snapshot saved and exported (with validation warnings).'
+        : 'Release snapshot saved and exported.',
     });
   };
 

@@ -15,7 +15,7 @@ The project has two surfaces:
 
 | Surface | Runtime | Host |
 |---|---|---|
-| `apps/player` | PWA (iOS Safari, Home Screen) | Vercel |
+| `apps/player` | PWA (iOS Safari, Home Screen) | Vercel — `https://wifey-player-wsydk888zxs-projects.vercel.app` |
 | `apps/admin` | Browser | Vercel |
 | Admin AI server (`apps/admin/server/server.js`) | Node.js | Local (author's machine) |
 | Player responses | Supabase `player_responses` table | Supabase (hosted) |
