@@ -249,29 +249,43 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
 
   if (!visibleDays.length) return null;
 
+  const currentEntry = visibleDays.find(({ index }, visibleIndex) => {
+    const dayEnvelopeIndexes = flattened
+      .filter((item) => item.dayIndex === index)
+      .map((item) => item.index);
+    return dayEnvelopeIndexes.includes(currentIdx);
+  });
+  const currentVisibleIndex = currentEntry ? visibleDays.indexOf(currentEntry) : visibleDays.length - 1;
+  const activeDay = currentEntry || visibleDays[visibleDays.length - 1];
+
   return (
     <div className="timeline">
       <div className="cord" />
-      {visibleDays.map(({ day, index }, visibleIndex) => {
-        const dayEnvelopeIndexes = flattened
-          .filter((item) => item.dayIndex === index)
-          .map((item) => item.index);
-        const dayComplete =
-          dayEnvelopeIndexes.length > 0 &&
-          dayEnvelopeIndexes.every((envIndex) => completedIdx.has(envIndex));
-        const isCurrent = dayEnvelopeIndexes.includes(currentIdx);
-        const className = dayComplete ? 'done' : isCurrent ? 'current' : 'future';
+      <div className="seal-row">
+        {visibleDays.map(({ day, index }, visibleIndex) => {
+          const dayEnvelopeIndexes = flattened
+            .filter((item) => item.dayIndex === index)
+            .map((item) => item.index);
+          const dayComplete =
+            dayEnvelopeIndexes.length > 0 &&
+            dayEnvelopeIndexes.every((envIndex) => completedIdx.has(envIndex));
+          const isCurrent = dayEnvelopeIndexes.includes(currentIdx);
+          const className = dayComplete ? 'done' : isCurrent ? 'current' : 'future';
 
-        return (
-          <div key={getDayId(day, index)} className={`seal-node ${className}`}>
-            <div className="seal-medallion">{toRoman(visibleIndex + 1)}</div>
-            <div className="seal-caption">
-              <span className="day-line">Day {toRoman(visibleIndex + 1)}</span>
-              <span className="theme-line">{rp(day.theme)}</span>
+          return (
+            <div key={getDayId(day, index)} className={`seal-node ${className}`}>
+              <div className="seal-medallion">{toRoman(visibleIndex + 1)}</div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+      {activeDay && (
+        <div className="timeline-label">
+          <span className="timeline-label-day">Day&nbsp;{toRoman(currentVisibleIndex + 1)}</span>
+          <span className="timeline-label-sep">·</span>
+          <span className="timeline-label-theme">{rp(activeDay.day.title || activeDay.day.theme)}</span>
+        </div>
+      )}
     </div>
   );
 }
