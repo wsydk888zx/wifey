@@ -17,6 +17,7 @@ import {
   replacePlaceholders,
   validateStoryContent,
   validateStoryExport,
+  getEnvelopeNotificationSchedule,
 } from '../src/index.js';
 
 function makeTestChoice(id, inputs = []) {
@@ -394,4 +395,137 @@ test('validateStoryExport accepts importable config wrapper shape', () => {
 
   assert.deepEqual(result.errors, []);
   assert.equal(result.stats.flowRules, 2);
+});
+
+test('normalizeEnvelope preserves scheduledAt and sets notify defaults', () => {
+  const isoTime = '2026-05-15T14:30:00Z';
+  const content = {
+    prologue: { lines: ['Begin.'] },
+    days: [
+      {
+        envelopes: [
+          {
+            id: 'env-scheduled',
+            scheduledAt: isoTime,
+            choices: [makeTestChoice('choice-1')],
+          },
+        ],
+      },
+    ],
+  };
+
+  const normalized = normalizeContentModel(content);
+  const envelope = normalized.days[0].envelopes[0];
+
+  assert.equal(envelope.scheduledAt, isoTime);
+  assert.equal(envelope.notify, true);
+});
+
+test('normalizeEnvelope defaults scheduledAt to null and notify to false when not set', () => {
+  const content = {
+    prologue: { lines: ['Begin.'] },
+    days: [
+      {
+        envelopes: [
+          {
+            id: 'env-default',
+            choices: [makeTestChoice('choice-1')],
+          },
+        ],
+      },
+    ],
+  };
+
+  const normalized = normalizeContentModel(content);
+  const envelope = normalized.days[0].envelopes[0];
+
+  assert.equal(envelope.scheduledAt, null);
+  assert.equal(envelope.notify, false);
+});
+
+test('normalizeEnvelope respects explicit notify: false', () => {
+  const isoTime = '2026-05-15T14:30:00Z';
+  const content = {
+    prologue: { lines: ['Begin.'] },
+    days: [
+      {
+        envelopes: [
+          {
+            id: 'env-no-notify',
+            scheduledAt: isoTime,
+            notify: false,
+            choices: [makeTestChoice('choice-1')],
+          },
+        ],
+      },
+    ],
+  };
+
+  const normalized = normalizeContentModel(content);
+  const envelope = normalized.days[0].envelopes[0];
+
+  assert.equal(envelope.scheduledAt, isoTime);
+  assert.equal(envelope.notify, false);
+});
+
+test('validateStoryContent rejects invalid ISO-8601 scheduledAt format', () => {
+  const content = {
+    prologue: { lines: ['Begin.'] },
+    days: [
+      {
+        envelopes: [
+          {
+            id: 'env-bad-date',
+            scheduledAt: 'not-a-date',
+            choices: [makeTestChoice('choice-1')],
+          },
+        ],
+      },
+    ],
+  };
+
+  const result = validateStoryContent(content, { rules: [] });
+
+  assert.match(result.errors.join('\n'), /Invalid scheduledAt format/);
+});
+
+test('getEnvelopeNotificationSchedule returns scheduled envelopes with notify enabled', () => {
+  const isoTime1 = '2026-05-15T14:30:00Z';
+  const isoTime2 = '2026-05-16T09:00:00Z';
+  const content = {
+    prologue: { lines: ['Begin.'] },
+    days: [
+      {
+        envelopes: [
+          {
+            id: 'env-notify-yes',
+            label: 'Morning Message',
+            intro: 'Good morning',
+            scheduledAt: isoTime1,
+            notify: true,
+            choices: [makeTestChoice('choice-1')],
+          },
+          {
+            id: 'env-notify-no',
+            label: 'Evening Message',
+            scheduledAt: isoTime2,
+            notify: false,
+            choices: [makeTestChoice('choice-2')],
+          },
+          {
+            id: 'env-no-schedule',
+            choices: [makeTestChoice('choice-3')],
+          },
+        ],
+      },
+    ],
+  };
+
+  const schedule = getEnvelopeNotificationSchedule(content);
+
+  assert.equal(schedule.length, 1);
+  assert.equal(schedule[0].envelopeId, 'env-notify-yes');
+  assert.equal(schedule[0].scheduledAt, isoTime1);
+  assert.equal(schedule[0].title, 'Morning Message');
+  assert.equal(schedule[0].body, 'Good morning');
 });

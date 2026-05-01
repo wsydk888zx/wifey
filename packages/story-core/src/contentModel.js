@@ -99,6 +99,8 @@ function normalizeEnvelope(
   next.timeLabel = inferLegacyTimeLabel(next, envelopeIndex);
   next.label = next.label || `Day ${dayNumber} · ${next.timeLabel}`;
   next.sealMotif = next.sealMotif || String(dayNumber);
+  next.scheduledAt = next.scheduledAt || null;
+  next.notify = next.notify === false ? false : !!next.scheduledAt;
   next.branchOnly = !!(next.branchOnly || inheritedBranchOnly);
   if (branchGroup) next.branchGroup = branchGroup;
   next.choices = Array.isArray(next.choices) ? next.choices : [];

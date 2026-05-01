@@ -33,3 +33,4 @@ export {
   validateStoryContent,
   validateStoryExport,
 } from './validation.js';
+export { getEnvelopeNotificationSchedule } from './notifications.js';
