@@ -43,7 +43,6 @@ function Envelope({ envelope, addressee, tweaks, state, onOpen }) {
         <div className="inner-lining" />
 
         <div className="address-block">
-          <div className="address-line">For</div>
           <div className="address">{addressee || 'Mine'}</div>
           <div className="address-rule" />
         </div>
