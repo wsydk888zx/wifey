@@ -29,6 +29,20 @@ The biggest risks are:
 - Move shared behavior into `packages/story-core` before using it in multiple apps.
 - Keep the root player preview working until the workspace player is accepted as the only runtime path.
 
+## Current Hotfix: Admin Tweak Persistence
+
+Status: complete.
+
+Goal: restore persistence for workspace admin `tweaks` so names and intensity survive draft save/load, export/import, publish, and player fetch.
+
+Done:
+
+- Traced the loss of `tweaks` to the Supabase-backed admin adapter, which was not persisting them on save or restoring them on load.
+- Restored `tweaks` persistence by storing them alongside `flow_map`, keeping the editable flow-map shape clean while avoiding a password-gated schema migration.
+- Added `tweaks` to admin export/import so backup JSON keeps names and intensity.
+- Updated the player loader to read published `tweaks` and use the authored flow map from Supabase.
+- Verified the admin and player production builds before the hosted rollout.
+
 ## Phase 0: Baseline And Safety Net
 
 Status: complete.

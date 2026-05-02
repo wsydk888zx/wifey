@@ -617,6 +617,7 @@ function AdminApp() {
         const loaded = await loadAdminDraft(supabase, defaultContent, defaultFlowMap);
         setDraft(loaded);
         setSavedFingerprint(createDraftFingerprint(loaded));
+        setAiIntensity(loaded.tweaks?.intensity || TWEAK_DEFAULTS.intensity);
       } catch (err) {
         console.error('Failed to load draft:', err);
         setNotice({ tone: 'error', text: 'Failed to load draft from Supabase.' });
@@ -933,7 +934,7 @@ function AdminApp() {
     warnings: validation.warnings.length,
   };
   const currentExportFingerprint = useMemo(
-    () => JSON.stringify(createAdminExport({ content, flowMap })),
+    () => JSON.stringify(createSnapshotExport({ content, flowMap })),
     [content, flowMap],
   );
   const snapshotRows = useMemo(
@@ -1190,7 +1191,7 @@ function AdminApp() {
       const response = await fetch(getAdminLocalServiceUrl('/api/save-content'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, flowMap }),
+        body: JSON.stringify(createAdminExport(draft)),
       });
       const json = await response.json();
       if (!response.ok) {
@@ -1223,8 +1224,10 @@ function AdminApp() {
         ...current,
         content: imported.content,
         flowMap: imported.flowMap,
+        tweaks: imported.tweaks,
         sourceLabel: file.name,
       }));
+      setAiIntensity(imported.tweaks.intensity);
       setActiveDayIndex(0);
       setActiveEnvelopeIndex(0);
       setActiveChoiceIndex(0);
@@ -1310,6 +1313,9 @@ function AdminApp() {
   };
 
   const updateTweaks = (updates) => {
+    if (Object.hasOwn(updates, 'intensity')) {
+      setAiIntensity(Number(updates.intensity) || TWEAK_DEFAULTS.intensity);
+    }
     setDraft((current) => ({
       ...current,
       tweaks: normalizeAdminTweaks({

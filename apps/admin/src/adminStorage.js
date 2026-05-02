@@ -138,6 +138,7 @@ export function createAdminExport(draft) {
   return {
     content: normalizeContentModel(draft.content),
     flowMap: normalizeFlowMap(draft.flowMap),
+    tweaks: normalizeAdminTweaks(draft.tweaks),
   };
 }
 
@@ -161,6 +162,7 @@ export function parseAdminImport(source, fallbackFlowMap) {
   return {
     content,
     flowMap,
+    tweaks: normalizeAdminTweaks(source?.tweaks || contentSource?.defaultTweaks || contentSource?.tweaks),
     validation,
   };
 }

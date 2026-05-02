@@ -17,6 +17,19 @@ function normalizeFlowMap(flowMap) {
   return { rules: [] };
 }
 
+function sanitizeEditableFlowMap(flowMap) {
+  const normalized = normalizeFlowMap(flowMap);
+  if (
+    normalized &&
+    typeof normalized === 'object' &&
+    !Array.isArray(normalized) &&
+    Object.hasOwn(normalized, 'tweaks')
+  ) {
+    delete normalized.tweaks;
+  }
+  return normalized;
+}
+
 function normalizeIntensity(value) {
   const intensity = Number(value);
   if (!Number.isFinite(intensity)) return TWEAK_DEFAULTS.intensity;
@@ -44,11 +57,27 @@ export function createDefaultAdminTweaks() {
 export function createDefaultAdminDraft(defaultContent, defaultFlowMap) {
   return {
     content: normalizeContentModel(defaultContent),
-    flowMap: normalizeFlowMap(defaultFlowMap),
+    flowMap: sanitizeEditableFlowMap(defaultFlowMap),
     snapshots: [],
     tweaks: createDefaultAdminTweaks(),
     sourceLabel: 'Package defaults',
   };
+}
+
+function buildPersistedFlowMap(flowMap, tweaks) {
+  return {
+    ...sanitizeEditableFlowMap(flowMap),
+    tweaks: normalizeAdminTweaks(tweaks),
+  };
+}
+
+function readPersistedTweaks(source) {
+  if (!source || typeof source !== 'object') return createDefaultAdminTweaks();
+  const flowMapTweaks =
+    source.flow_map && typeof source.flow_map === 'object' && !Array.isArray(source.flow_map)
+      ? source.flow_map.tweaks
+      : undefined;
+  return normalizeAdminTweaks(source.tweaks ?? flowMapTweaks);
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
@@ -85,9 +114,9 @@ export async function loadAdminDraft(supabase, defaultContent, defaultFlowMap) {
     const story = stories[0];
     return {
       content: normalizeContentModel(story.days ? { days: story.days, prologue: story.prologue } : defaultContent),
-      flowMap: normalizeFlowMap(story.flow_map),
+      flowMap: sanitizeEditableFlowMap(story.flow_map),
       snapshots: [], // Snapshots are in story_versions table, loaded separately if needed
-      tweaks: createDefaultAdminTweaks(),
+      tweaks: readPersistedTweaks(story),
       sourceLabel: `Supabase draft (updated ${new Date(story.updated_at).toLocaleString()})`,
       storyId: story.id,
     };
@@ -110,7 +139,7 @@ export async function saveAdminDraft(supabase, draft) {
     const updateData = {
       prologue: draft.content.prologue,
       days: draft.content.days,
-      flow_map: normalizeFlowMap(draft.flowMap),
+      flow_map: buildPersistedFlowMap(draft.flowMap, draft.tweaks),
       updated_at: new Date().toISOString(),
       change_notes: `Auto-saved at ${new Date().toLocaleTimeString()}`,
     };
@@ -334,7 +363,7 @@ export function createAdminSnapshot({ content, flowMap }, name) {
     name: name?.trim() || `Snapshot ${new Date(timestamp).toLocaleString()}`,
     timestamp,
     content: normalizeContentModel(content),
-    flowMap: normalizeFlowMap(flowMap),
+    flowMap: sanitizeEditableFlowMap(flowMap),
   };
 }
 
@@ -361,7 +390,7 @@ export function downloadAdminExport(data, filename) {
 export function parseAdminImport(source, fallbackFlowMap) {
   const contentSource =
     source?.content && typeof source.content === 'object' ? source.content : source;
-  const flowMap = normalizeFlowMap(
+  const flowMap = sanitizeEditableFlowMap(
     source?.flowMap || contentSource?.defaultFlowMap || fallbackFlowMap,
   );
   const content = normalizeContentModel(contentSource);
@@ -370,6 +399,7 @@ export function parseAdminImport(source, fallbackFlowMap) {
   return {
     content,
     flowMap,
+    tweaks: normalizeAdminTweaks(source?.tweaks || contentSource?.defaultTweaks || contentSource?.tweaks),
     validation,
   };
 }
@@ -380,7 +410,8 @@ export function parseAdminImport(source, fallbackFlowMap) {
 export function createAdminExport(draft) {
   return {
     content: normalizeContentModel(draft.content),
-    flowMap: normalizeFlowMap(draft.flowMap),
+    flowMap: sanitizeEditableFlowMap(draft.flowMap),
+    tweaks: normalizeAdminTweaks(draft.tweaks),
   };
 }
 
@@ -390,7 +421,6 @@ export function createAdminExport(draft) {
 export function createAdminPreviewPayload(draft) {
   return {
     ...createAdminExport(draft),
-    tweaks: normalizeAdminTweaks(draft.tweaks),
     sourceLabel: draft.sourceLabel || 'Supabase draft',
   };
 }
@@ -452,7 +482,8 @@ export async function loadPublishedStory(supabase) {
       id: story.id,
       prologue: story.prologue,
       days: story.days,
-      flowMap: story.flow_map,
+      flowMap: sanitizeEditableFlowMap(story.flow_map),
+      tweaks: readPersistedTweaks(story),
       versionNumber: story.version_number,
       publishedAt: story.published_at,
     };
@@ -486,7 +517,7 @@ export function clearAdminDraftStorage() {
 export function createDraftFingerprint(draft) {
   return JSON.stringify({
     content: normalizeContentModel(draft.content),
-    flowMap: normalizeFlowMap(draft.flowMap),
+    flowMap: sanitizeEditableFlowMap(draft.flowMap),
     tweaks: normalizeAdminTweaks(draft.tweaks),
   });
 }

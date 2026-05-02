@@ -21,6 +21,23 @@ const supabase =
     ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
     : null;
 
+function normalizePlayerTweaks(tweaks = {}) {
+  const source = tweaks && typeof tweaks === 'object' ? tweaks : {};
+  const intensity = Number(source.intensity);
+
+  return {
+    herName: Object.hasOwn(source, 'herName')
+      ? String(source.herName ?? '')
+      : TWEAK_DEFAULTS.herName,
+    hisName: Object.hasOwn(source, 'hisName')
+      ? String(source.hisName ?? '')
+      : TWEAK_DEFAULTS.hisName,
+    intensity: Number.isFinite(intensity)
+      ? Math.min(10, Math.max(1, Math.round(intensity)))
+      : TWEAK_DEFAULTS.intensity,
+  };
+}
+
 // ── Supabase story and state persistence ──────────────────────────────────────
 
 async function fetchPublishedStory() {
@@ -43,6 +60,11 @@ async function fetchPublishedStory() {
     return {
       prologue: story.prologue || { lines: [], signoff: '' },
       days: Array.isArray(story.days) ? story.days : [],
+      flowMap: story.flow_map || { rules: [] },
+      tweaks: normalizePlayerTweaks(
+        story.tweaks ||
+        (story.flow_map && typeof story.flow_map === 'object' ? story.flow_map.tweaks : undefined),
+      ),
     };
   } catch (err) {
     console.error('Error fetching published story:', err);
@@ -813,13 +835,14 @@ function App() {
       // Load published story from Supabase (or use default)
       const storyData = await fetchPublishedStory();
       setContent(normalizeContentModel(storyData));
+      setTweaks(normalizePlayerTweaks(storyData.tweaks));
 
       // Load player state
       const stateResult = await fetchRemoteState();
       setInitialState(stateResult || {});
 
       // Build flow map from story content
-      setFlowMap(buildCompleteFlowMap(storyData, storyData.defaultFlowMap || { rules: [] }));
+      setFlowMap(buildCompleteFlowMap(storyData, storyData.flowMap || storyData.defaultFlowMap || { rules: [] }));
 
       setReady(true);
     }
