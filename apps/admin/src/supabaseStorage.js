@@ -140,13 +140,14 @@ export async function saveAdminDraft(supabase, draft) {
       }
 
       if (data && data[0]) {
-        draft.storyId = data[0].id;
+        return { newStoryId: data[0].id };
       }
     }
   } catch (err) {
     console.error('Error in saveAdminDraft:', err);
     throw err;
   }
+  return null;
 }
 
 /**

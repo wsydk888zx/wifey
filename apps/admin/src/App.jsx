@@ -601,7 +601,10 @@ function AdminApp({ session }) {
       if (!supabase || isLoadingDraft) return;
 
       try {
-        await saveAdminDraft(supabase, draft);
+        const result = await saveAdminDraft(supabase, draft);
+        if (result?.newStoryId) {
+          setDraft(prev => ({ ...prev, storyId: result.newStoryId }));
+        }
         setSavedFingerprint(createDraftFingerprint(draft));
       } catch (err) {
         console.error('Failed to save draft:', err);
