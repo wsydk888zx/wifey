@@ -4,6 +4,18 @@
 
 **Open [docs/ops-playbook.md](docs/ops-playbook.md) before proposing solutions.** It catalogues every recurring issue on this project (admin login broken after deploy, player URL serving admin, build drift, content desync, etc.) with the exact root cause and fix. Do not propose generic diagnostic steps for problems already solved there.
 
+## Release policy
+
+**Local-only is not a meaningful stopping point on this project unless the user explicitly says so.**
+
+When work is intended to be completed, the default expectation is:
+
+1. Commit and push the code to **GitHub**
+2. Deploy the affected surface(s) to **Vercel**
+3. Apply and verify any required **Supabase** changes (migrations, functions, secrets, published content)
+
+Do not treat "it works locally" as done. Always finish the hosted rollout path unless the user explicitly asks to stop earlier.
+
 ## Known facts (do not re-discover these)
 
 - **Two confirmed Supabase auth users exist** — `jondcarpenter@outlook.com` (primary) + a backup. Both show as "Confirmed" in the Supabase dashboard. Never tell the user "you don't have an admin account."

@@ -6,7 +6,6 @@ import {
   FLOW_OPERATOR_OPTIONS,
   INPUT_TYPE_OPTIONS,
   PLACEHOLDER_TOKEN_OPTIONS,
-  STORAGE_KEYS,
   TWEAK_DEFAULTS,
   buildCompleteFlowMap,
   flattenStoryEnvelopes,
@@ -34,14 +33,10 @@ import {
   normalizeAdminTweaks,
   parseAdminImport,
   saveAdminDraft,
-  subscribeToPlayerState,
   publishStory,
-  getStoryVersions,
-  rollbackToVersion,
 } from './supabaseStorage.js';
 
 const sections = ['Overview', 'Settings', 'Story', 'Flow', 'Responses', 'AI Drafts', 'Snapshots', 'Publish', 'Notifications'];
-const enabledSections = new Set(['Overview', 'Settings', 'Story', 'Flow', 'Responses', 'AI Drafts', 'Snapshots', 'Publish', 'Notifications']);
 const sectionHeadings = {
   Overview: { id: 'overview-heading', title: 'Content Health' },
   Settings: { id: 'settings-heading', title: 'Settings' },
@@ -403,11 +398,26 @@ function createPlaceholderPreviewRow(label, value, tweaks) {
   };
 }
 
-function LoginScreen() {
+function LoadingScreen({ message = 'Checking admin access…' }) {
+  return (
+    <div className="auth-screen">
+      <div className="auth-card auth-card--loading">
+        <h1>Yours, Watching</h1>
+        <p>{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function LoginScreen({ initialError = '' }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(initialError);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setError(initialError);
+  }, [initialError]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -426,13 +436,18 @@ function LoginScreen() {
       justifyContent: 'center',
       background: 'var(--parchment)',
       fontFamily: 'var(--sans)',
+      padding: '16px',
+      width: '100%',
     },
     card: {
       background: '#fff',
       border: '1px solid var(--brass)',
       borderRadius: 8,
+      boxSizing: 'border-box',
       padding: '2.5rem 2rem',
-      width: 340,
+      width: '100%',
+      maxWidth: 320,
+      margin: '0 auto',
       display: 'flex',
       flexDirection: 'column',
       gap: '1.25rem',
@@ -521,32 +536,56 @@ function LoginScreen() {
 function App() {
   const [session, setSession] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
-    if (!supabase) { setAuthChecked(true); return; }
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    let active = true;
+
+    if (!supabase) {
       setAuthChecked(true);
-    });
+      return undefined;
+    }
+
+    async function bootstrapSession() {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        if (!active) return;
+        setSession(data.session);
+        setAuthError('');
+      } catch (err) {
+        console.error('Failed to check admin auth session:', err);
+        if (!active) return;
+        setAuthError('Could not verify the current session. Sign in to reconnect.');
+      } finally {
+        if (active) setAuthChecked(true);
+      }
+    }
+
+    bootstrapSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
     });
-    return () => subscription.unsubscribe();
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  if (!authChecked) return null;
-  if (supabase && !session) return <LoginScreen />;
-  return <AdminApp session={session} />;
+  if (!authChecked) return <LoadingScreen />;
+  if (supabase && !session) return <LoginScreen initialError={authError} />;
+  return <AdminApp />;
 }
 
-function AdminApp({ session }) {
+function AdminApp() {
   const defaultDraft = createDefaultAdminDraft(defaultContent, defaultFlowMap);
   const [draft, setDraft] = useState(defaultDraft);
   const [savedFingerprint, setSavedFingerprint] = useState(() => createDraftFingerprint(defaultDraft));
   const [isLoadingDraft, setIsLoadingDraft] = useState(true);
-  const [storyVersions, setStoryVersions] = useState([]);
   const [publishLoading, setPublishLoading] = useState(false);
-  const [publishSuccess, setPublishSuccess] = useState('');
+  const isPublishingRef = useRef(false);
   const [notice, setNotice] = useState(null);
   const [snapshotName, setSnapshotName] = useState('');
   const [activeSection, setActiveSection] = useState('Overview');
@@ -578,15 +617,9 @@ function AdminApp({ session }) {
         const loaded = await loadAdminDraft(supabase, defaultContent, defaultFlowMap);
         setDraft(loaded);
         setSavedFingerprint(createDraftFingerprint(loaded));
-
-        // Also load version history
-        if (loaded.storyId) {
-          const versions = await getStoryVersions(supabase, loaded.storyId);
-          setStoryVersions(versions);
-        }
       } catch (err) {
         console.error('Failed to load draft:', err);
-        setNotice({ type: 'error', text: 'Failed to load draft from Supabase' });
+        setNotice({ tone: 'error', text: 'Failed to load draft from Supabase.' });
       } finally {
         setIsLoadingDraft(false);
       }
@@ -598,7 +631,7 @@ function AdminApp({ session }) {
   // Auto-save draft to Supabase
   useEffect(() => {
     const timer = setTimeout(async () => {
-      if (!supabase || isLoadingDraft) return;
+      if (!supabase || isLoadingDraft || isPublishingRef.current) return;
 
       try {
         const result = await saveAdminDraft(supabase, draft);
@@ -617,22 +650,31 @@ function AdminApp({ session }) {
   useEffect(() => {
     if (!supabase) return;
 
-    supabase.from('player_responses').select('*').then(({ data }) => {
-      if (!data) return;
+    const refreshPlayerResponses = async () => {
+      const { data, error } = await supabase
+        .from('player_responses')
+        .select('envelope_id, choice_id, responses, updated_at')
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        console.error('Failed to load player responses:', error);
+        return;
+      }
+
       const merged = {};
-      data.forEach((row) => { merged[`${row.envelope_id}::${row.choice_id}`] = row.responses; });
+      data?.forEach((row) => {
+        const key = `${row.envelope_id}::${row.choice_id}`;
+        if (!Object.hasOwn(merged, key)) merged[key] = row.responses;
+      });
       setPlayerResponses(merged);
-    });
+    };
+
+    refreshPlayerResponses();
 
     const channel = supabase
       .channel('player_responses_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'player_responses' }, () => {
-        supabase.from('player_responses').select('*').then(({ data }) => {
-          if (!data) return;
-          const merged = {};
-          data.forEach((row) => { merged[`${row.envelope_id}::${row.choice_id}`] = row.responses; });
-          setPlayerResponses(merged);
-        });
+        refreshPlayerResponses();
       })
       .subscribe();
 
@@ -952,7 +994,11 @@ function AdminApp({ session }) {
     {
       label: 'Draft Storage',
       tone: isDirty ? 'warning' : 'success',
-      detail: isDirty ? 'Unsaved browser draft changes' : 'Browser draft saved',
+      detail: isDirty
+        ? 'Unsaved editor changes are still pending'
+        : supabase
+          ? 'Draft synced to Supabase'
+          : 'Draft is only available locally in this session',
     },
     {
       label: 'Snapshot',
@@ -972,63 +1018,91 @@ function AdminApp({ session }) {
     (isDirty ? 1 : 0) +
     (currentSnapshotRow ? 0 : 1);
   const canPublish = validation.errors.length === 0;
+  const canSavePackageCopy = Boolean(ADMIN_LOCAL_SERVICE_BASE_URL);
+  const syncSummaryItems = [
+    {
+      label: 'Draft Source',
+      value: draft.sourceLabel || 'Package defaults',
+    },
+    {
+      label: 'Supabase',
+      value: supabase ? 'Connected' : 'Configuration missing',
+    },
+    {
+      label: 'Draft Row',
+      value: draft.storyId ? `#${draft.storyId}` : 'Not created yet',
+    },
+    {
+      label: 'Sync State',
+      value: isDirty ? 'Unsaved changes pending' : 'Latest edits saved',
+    },
+    {
+      label: 'Snapshots',
+      value: `${snapshots.length} / ${MAX_ADMIN_SNAPSHOTS}`,
+    },
+    {
+      label: 'Visible Flow Rules',
+      value: String(visibleFlowRuleCount),
+    },
+  ];
 
   const handlePublishStory = async () => {
-    if (!supabase || !draft.storyId) {
-      setNotice({ type: 'error', text: 'Cannot publish: draft not ready' });
+    if (!supabase) {
+      setNotice({ tone: 'error', text: 'No Supabase connection — cannot publish live.' });
       return;
     }
 
     setPublishLoading(true);
+    isPublishingRef.current = true;
     try {
-      const result = await publishStory(supabase, draft, `Published at ${new Date().toLocaleString()}`);
-      setPublishSuccess(`Published version ${result.versionNumber}`);
-      setNotice({ type: 'success', text: `Story published as version ${result.versionNumber}` });
+      let draftToPublish = draft;
+      const saveResult = await saveAdminDraft(supabase, draft);
+
+      if (saveResult?.newStoryId) {
+        draftToPublish = { ...draft, storyId: saveResult.newStoryId };
+        setDraft(draftToPublish);
+      }
+
+      setSavedFingerprint(createDraftFingerprint(draftToPublish));
+
+      if (!draftToPublish.storyId) {
+        throw new Error('Draft not ready for publishing. Save the draft again and retry.');
+      }
+
+      const result = await publishStory(
+        supabase,
+        draftToPublish,
+        `Published at ${new Date().toLocaleString()}`,
+      );
+      setNotice({ tone: 'success', text: `Story published live as version ${result.versionNumber}.` });
 
       // Switch to the new draft so subsequent auto-saves don't overwrite the published row
       if (result.newDraftId) {
         setDraft(prev => ({ ...prev, storyId: result.newDraftId }));
       }
-
-      // Reload versions
-      const versions = await getStoryVersions(supabase, draft.storyId);
-      setStoryVersions(versions);
-
-      setTimeout(() => setPublishSuccess(''), 3000);
     } catch (err) {
       console.error('Publish error:', err);
-      setNotice({ type: 'error', text: `Publish failed: ${err.message}` });
+      setNotice({ tone: 'error', text: `Publish failed: ${err.message}` });
     } finally {
       setPublishLoading(false);
-    }
-  };
-
-  const handleRollback = async (versionId) => {
-    if (!supabase) return;
-
-    try {
-      const result = await rollbackToVersion(supabase, versionId);
-      const loaded = await loadAdminDraft(supabase, defaultContent, defaultFlowMap);
-      setDraft(loaded);
-      setSavedFingerprint(createDraftFingerprint(loaded));
-      setNotice({ type: 'success', text: `Rolled back to version ${result.versionNumber}` });
-    } catch (err) {
-      console.error('Rollback error:', err);
-      setNotice({ type: 'error', text: `Rollback failed: ${err.message}` });
+      isPublishingRef.current = false;
     }
   };
 
   const handleSaveDraft = async () => {
     if (!supabase) {
-      setNotice({ type: 'warning', text: 'No Supabase connection — changes auto-save when connected.' });
+      setNotice({ tone: 'warning', text: 'No Supabase connection — changes will only persist in this browser session.' });
       return;
     }
     try {
-      await saveAdminDraft(supabase, draft);
+      const result = await saveAdminDraft(supabase, draft);
+      if (result?.newStoryId) {
+        setDraft(prev => ({ ...prev, storyId: result.newStoryId }));
+      }
       setSavedFingerprint(createDraftFingerprint(draft));
-      setNotice({ type: 'success', text: 'Draft saved.' });
+      setNotice({ tone: 'success', text: 'Draft saved to Supabase.' });
     } catch (err) {
-      setNotice({ type: 'error', text: `Save failed: ${err.message}` });
+      setNotice({ tone: 'error', text: `Save failed: ${err.message}` });
     }
   };
 
@@ -1038,7 +1112,7 @@ function AdminApp({ session }) {
     setDraft(nextDraft);
     setSavedFingerprint(createDraftFingerprint(nextDraft));
     setAiIntensity(nextDraft.tweaks.intensity);
-    setNotice({ tone: 'warning', text: 'Browser draft cleared. Package defaults are loaded.' });
+    setNotice({ tone: 'warning', text: 'Draft reset to package defaults. Legacy local cache was cleared.' });
     setSnapshotName('');
     setActiveDayIndex(0);
     setActiveEnvelopeIndex(0);
@@ -1108,7 +1182,7 @@ function AdminApp({ session }) {
       return;
     }
     if (!ADMIN_LOCAL_SERVICE_BASE_URL) {
-      setNotice({ tone: 'error', text: 'Local service is not running. Start with npm run admin:dev.' });
+      setNotice({ tone: 'error', text: 'Package copy saving is only available during local admin development.' });
       return;
     }
 
@@ -1123,7 +1197,7 @@ function AdminApp({ session }) {
         setNotice({ tone: 'error', text: json.error || 'Save failed.' });
         return;
       }
-      setNotice({ tone: 'success', text: 'Story saved to file. This is now the source of truth.' });
+      setNotice({ tone: 'success', text: 'Package story file updated from the current draft.' });
     } catch (err) {
       setNotice({ tone: 'error', text: `Save failed: ${err.message}` });
     }
@@ -1911,7 +1985,6 @@ function AdminApp({ session }) {
           {sections.map((section) => (
             <button
               className={section === activeSection ? 'active' : ''}
-              disabled={!enabledSections.has(section)}
               key={section}
               onClick={() => setActiveSection(section)}
               type="button"
@@ -2039,15 +2112,15 @@ function AdminApp({ session }) {
                 <strong>{tweaks.intensity}/10</strong>
               </div>
               <div>
-                <span>Storage</span>
-                <strong>{isDirty ? 'Dirty' : 'Clean'}</strong>
+                <span>Sync</span>
+                <strong>{isDirty ? 'Pending' : 'Current'}</strong>
               </div>
             </div>
 
             <section className="data-panel" aria-labelledby="settings-editor-heading">
               <div className="panel-heading">
                 <h3 id="settings-editor-heading">Tweak Settings</h3>
-                <span>{STORAGE_KEYS.tweaks}</span>
+                <span>{supabase ? 'Saved with the draft' : 'Local session only'}</span>
               </div>
               <div className="settings-workbench">
                 <div className="field-stack">
@@ -2901,7 +2974,7 @@ function AdminApp({ session }) {
             <section className="data-panel" aria-labelledby="responses-heading">
               <div className="panel-heading">
                 <h3 id="responses-heading">Player Form Input (Read-Only)</h3>
-                <span>Polls admin server every 2s. Works across devices on the same network.</span>
+                <span>Realtime from Supabase. Latest response wins per envelope and choice.</span>
               </div>
 
               {!playerResponses ? (
@@ -2947,9 +3020,8 @@ function AdminApp({ session }) {
 
             <div className="panel-info-note">
               <p>
-                <strong>Local-only sync:</strong> These responses are read from the player's browser storage on
-                this device. Cross-device sync (admin on desktop, player on iOS) requires a backend write
-                endpoint — see follow-up.
+                <strong>Shared backend sync:</strong> These responses come from Supabase, so desktop admin and
+                mobile player stay in sync as long as the player is writing responses successfully.
               </p>
             </div>
           </>
@@ -3009,21 +3081,35 @@ function AdminApp({ session }) {
                     <strong>{draft.sourceLabel}</strong>
                     <p>
                       {isDirty
-                        ? 'There are unsaved browser draft edits. Export still uses the current in-memory draft.'
-                        : 'The browser draft matches the last saved admin state.'}
+                        ? 'There are unsaved editor changes. Export still uses the current in-memory draft.'
+                        : supabase
+                          ? 'The current draft matches the last saved Supabase state.'
+                          : 'The current draft matches the last local editor state.'}
                     </p>
                   </div>
                 </div>
 
                 <div className="publish-actions">
-                  <button
-                    className="control-button primary"
-                    type="button"
-                    disabled={!canPublish}
-                    onClick={handleSaveToFile}
-                  >
-                    Save to File
-                  </button>
+                  {supabase ? (
+                    <button
+                      className="control-button primary"
+                      type="button"
+                      disabled={!canPublish || publishLoading}
+                      onClick={handlePublishStory}
+                    >
+                      {publishLoading ? 'Publishing Live…' : 'Publish Live Story'}
+                    </button>
+                  ) : null}
+                  {canSavePackageCopy ? (
+                    <button
+                      className="control-button"
+                      type="button"
+                      disabled={!canPublish}
+                      onClick={handleSaveToFile}
+                    >
+                      Save Package Copy
+                    </button>
+                  ) : null}
                   <button className="control-button" type="button" onClick={handleSaveDraft}>
                     Save Draft
                   </button>
@@ -3162,15 +3248,9 @@ function AdminApp({ session }) {
                               placeholder={`Day ${dayIndex + 1} is here`}
                               value={envelope.notificationTitle || ''}
                               onChange={(e) => {
-                                const days = content.days.map((d, di) => {
-                                  if (di !== dayIndex) return d;
-                                  const envelopes = getDayEnvelopes(d).map((env, ei) => {
-                                    if (ei !== envIndex) return env;
-                                    return { ...env, notificationTitle: e.target.value };
-                                  });
-                                  return { ...d, envelopes };
+                                updateEnvelope(dayIndex, envIndex, {
+                                  notificationTitle: e.target.value,
                                 });
-                                setContent((prev) => ({ ...prev, days }));
                               }}
                             />
                           </label>
@@ -3181,15 +3261,9 @@ function AdminApp({ session }) {
                               placeholder="Your next envelope is waiting."
                               value={envelope.notificationBody || ''}
                               onChange={(e) => {
-                                const days = content.days.map((d, di) => {
-                                  if (di !== dayIndex) return d;
-                                  const envelopes = getDayEnvelopes(d).map((env, ei) => {
-                                    if (ei !== envIndex) return env;
-                                    return { ...env, notificationBody: e.target.value };
-                                  });
-                                  return { ...d, envelopes };
+                                updateEnvelope(dayIndex, envIndex, {
+                                  notificationBody: e.target.value,
                                 });
-                                setContent((prev) => ({ ...prev, days }));
                               }}
                             />
                           </label>
@@ -3201,7 +3275,7 @@ function AdminApp({ session }) {
               </div>
               <div className="field-note" style={{ marginTop: 16 }}>
                 After editing, go to <strong>Publish</strong> to push the updated schedule to Supabase.
-                The Edge Function reads <code>story_content</code> directly — no separate table needed.
+                The Edge Function should read the published story data in <code>stories</code>.
               </div>
             </section>
           </>
@@ -4042,34 +4116,16 @@ function AdminApp({ session }) {
 
         <section className="data-panel">
           <div className="panel-heading">
-            <h3>Storage</h3>
-            <span>{isDirty ? 'dirty' : 'clean'}</span>
+            <h3>Sync</h3>
+            <span>{isDirty ? 'pending' : 'current'}</span>
           </div>
           <dl className="storage-list">
-            <div>
-              <dt>Content</dt>
-              <dd>{STORAGE_KEYS.content}</dd>
-            </div>
-            <div>
-              <dt>Flow</dt>
-              <dd>{STORAGE_KEYS.flow}</dd>
-            </div>
-            <div>
-              <dt>Snapshots</dt>
-              <dd>{STORAGE_KEYS.snapshots}</dd>
-            </div>
-            <div>
-              <dt>Tweaks</dt>
-              <dd>{STORAGE_KEYS.tweaks}</dd>
-            </div>
-            <div>
-              <dt>Visible Flow Rules</dt>
-              <dd>{visibleFlowRuleCount}</dd>
-            </div>
-            <div>
-              <dt>Explicit Flow Rules</dt>
-              <dd>{explicitFlowRuleCount}</dd>
-            </div>
+            {syncSummaryItems.map((item) => (
+              <div key={item.label}>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
           </dl>
         </section>
 

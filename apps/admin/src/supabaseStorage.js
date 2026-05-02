@@ -116,32 +116,42 @@ export async function saveAdminDraft(supabase, draft) {
     };
 
     if (storyId) {
-      // Update existing draft
-      const { error } = await supabase
+      // Update existing draft — use .select('id') so we can detect 0-row silent failures
+      const { data: updated, error } = await supabase
         .from('stories')
         .update(updateData)
         .eq('id', storyId)
-        .eq('is_published', false);
+        .eq('is_published', false)
+        .select('id');
 
       if (error) {
         console.error('Error saving draft:', error);
         throw error;
       }
-    } else {
-      // Create new draft if none exists
-      const { data, error } = await supabase
-        .from('stories')
-        .insert([{ ...updateData, is_published: false }])
-        .select();
 
-      if (error) {
-        console.error('Error creating draft:', error);
-        throw error;
+      if (updated && updated.length > 0) {
+        // Successfully updated the existing draft row
+        return null;
       }
 
-      if (data && data[0]) {
-        return { newStoryId: data[0].id };
-      }
+      // 0 rows matched: the draft row was published or deleted (publish race condition).
+      // Fall through to INSERT a new draft so content is never silently lost.
+      console.warn('[saveAdminDraft] UPDATE matched 0 rows for storyId', storyId, '— draft may have been published. Creating new draft row.');
+    }
+
+    // Create new draft (storyId was undefined, or UPDATE matched 0 rows above)
+    const { data, error: insertError } = await supabase
+      .from('stories')
+      .insert([{ ...updateData, is_published: false }])
+      .select('id');
+
+    if (insertError) {
+      console.error('Error creating draft:', insertError);
+      throw insertError;
+    }
+
+    if (data && data[0]) {
+      return { newStoryId: data[0].id };
     }
   } catch (err) {
     console.error('Error in saveAdminDraft:', err);
