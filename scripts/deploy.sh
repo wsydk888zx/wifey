@@ -16,6 +16,11 @@ ADMIN_PROJECT_ID="prj_9d9FqwIQB8S4z5JGCponKFkhXQxU"
 PLAYER_PROJECT_ID="prj_7Rx0XM75xrhLLiQ9d18MUK0UThKd"
 ORG_ID="team_2ZGvGqwT3x8G87WEYTAkd4Ax"
 
+# URLs are set here and exported so verify-deploy.sh can use them (D2)
+# These are the stable Vercel project URLs. Update if domains change.
+export PLAYER_URL="https://wifey-player-wsydk888zxs-projects.vercel.app"
+export ADMIN_URL="${ADMIN_URL:-}"  # Set in env or auto-discovered below
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 cleanup_vercel_link() {
@@ -36,15 +41,32 @@ deploy_project() {
   echo ""
   echo "=== Deploying $name ==="
   set_vercel_project "$project_id"
-  vercel --prod --yes
+
+  # Capture vercel output to extract deployment URL (D2)
+  local vercel_output
+  vercel_output=$(vercel --prod --yes 2>&1 | tee /dev/stderr)
+  local deployed_url
+  deployed_url=$(echo "$vercel_output" | grep -E "https://[^ ]+\.vercel\.app" | tail -1 | grep -oE "https://[^ ]+" || true)
+
   cleanup_vercel_link
+
+  if [ -n "$deployed_url" ]; then
+    echo "  Deployed to: $deployed_url"
+    # Override the static URL with the actual deployment URL (D2)
+    if [ "$name" = "player" ]; then
+      export PLAYER_URL="$deployed_url"
+    elif [ "$name" = "admin" ]; then
+      export ADMIN_URL="$deployed_url"
+    fi
+  fi
+
   echo "✓ $name deployed"
 }
 
 # ── preflight ─────────────────────────────────────────────────────────────────
 
 echo "=== Running preflight ==="
-bash "$REPO_ROOT/scripts/preflight.sh"
+bash "$REPO_ROOT/scripts/preflight.sh" "$TARGET"
 
 # ── deploy ────────────────────────────────────────────────────────────────────
 
@@ -69,11 +91,10 @@ esac
 
 echo ""
 echo "=== Running smoke check ==="
-# Only smoke-check what we deployed; player check is reliable, admin needs ADMIN_URL set
 case "$TARGET" in
-  admin)  bash "$REPO_ROOT/scripts/verify-deploy.sh" admin ;;
-  player) bash "$REPO_ROOT/scripts/verify-deploy.sh" player ;;
-  both)   bash "$REPO_ROOT/scripts/verify-deploy.sh" both ;;
+  admin)  PLAYER_URL="$PLAYER_URL" ADMIN_URL="$ADMIN_URL" bash "$REPO_ROOT/scripts/verify-deploy.sh" admin ;;
+  player) PLAYER_URL="$PLAYER_URL" bash "$REPO_ROOT/scripts/verify-deploy.sh" player ;;
+  both)   PLAYER_URL="$PLAYER_URL" ADMIN_URL="$ADMIN_URL" bash "$REPO_ROOT/scripts/verify-deploy.sh" both ;;
 esac
 
 echo ""

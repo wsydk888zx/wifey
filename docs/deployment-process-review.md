@@ -1,7 +1,7 @@
 # Deployment Process Review & Remediation Plan
 
 **Date:** 2026-05-01
-**Status:** Phase A complete (2026-05-01). Phase B complete (2026-05-01). Phase C complete (2026-05-01). Phase D planned.
+**Status:** Phase A complete (2026-05-01). Phase B complete (2026-05-01). Phase C complete (2026-05-01). Phase D complete (2026-05-01).
 
 ---
 
@@ -55,15 +55,26 @@ Not yet verified (needs your hands or a Vercel re-auth):
 
 ---
 
+### 2026-05-01 — Phase D done
+
+- **D1** — `preflight.sh` now checks Supabase migration status. Lists local migration files, runs `supabase migration list` if logged in (warns if not). Hard-fails player deploy if unapplied migrations detected. Warning-only for admin since admin doesn't require the stories table.
+- **D2** — `deploy.sh` now captures the Vercel deployment URL from CLI output and exports `PLAYER_URL` / `ADMIN_URL` to `verify-deploy.sh`. Both smoke check scripts accept URL env vars with graceful fallback to known stable URLs.
+- **D3** — `preflight.sh` now checks AI server health on `http://127.0.0.1:8787/health` when deploying admin or both. Non-blocking warn only (AI server runs locally, not on Vercel). Guides to `npm run admin:dev` to start it.
+- **D4** — `verify-deploy.sh` now queries Supabase REST API after player smoke check to verify a published story exists in the `stories` table. Returns distinct error messages for: table missing (migration not applied), no published row (need to Publish from admin), API unreachable. **Found in this session:** `stories` migration not applied in production — `supabase db push` needed.
+
+**Known outstanding issue (found during D4):** The `stories` table does not exist in the production Supabase project. The `20260430_story_content_centralization.sql` migration needs to be applied. Until then, both admin storage and player content fetch will fail, falling back to bundled `storyData.js`.
+
+Fix: `supabase login && supabase db push`
+
+---
+
 ### 2026-05-01 — Phase D planned (next session)
 
-**Audit findings:**
-- Smoke check script hardcoded player URL and had incorrect title check — fixed locally, smoke check now passes.
+**Audit findings from Phase A–C implementation:**
+- Smoke check script hardcoded player URL and had incorrect title check — fixed, smoke check now passes.
 - Deploy script structure validated; correctly rejects missing/invalid arguments.
 - Pre-push hook structure validated; runs preflight before every push.
 - Both admin and player builds passing green on every preflight run.
-
-**Phase D scope:** Extend pre-deploy validation to catch data + infrastructure issues before they reach Vercel.
 
 ---
 
