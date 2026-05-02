@@ -217,7 +217,7 @@ Player app → fetch published story from Supabase → real-time updates
 
 ## Rollout Checklist
 
-- [x] Create Supabase schema (Phase 1) — `20260430_story_content_centralization.sql` created
+- [x] Create Supabase schema (Phase 1) — `20260502042315_story_content_centralization.sql` created
 - [x] Migrate admin to `supabaseStorage.js` (Phase 2) — new file + App.jsx updated
 - [x] Add auto-save + "Publish" flow in admin (Phase 2) — debounced save, publish/rollback functions added
 - [x] Implement player Supabase fetch (Phase 3) — fetchPublishedStory() added

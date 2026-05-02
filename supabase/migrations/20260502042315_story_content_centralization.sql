@@ -31,6 +31,7 @@ create table if not exists stories (
 alter table stories enable row level security;
 
 -- Policy: anon can read published stories only
+drop policy if exists "anon can read published stories" on stories;
 create policy "anon can read published stories"
   on stories for select
   to anon
@@ -38,16 +39,19 @@ create policy "anon can read published stories"
 
 -- Policy: admin (authenticated) can read all and write drafts
 -- Note: Implement admin auth check in application
+drop policy if exists "authenticated can read all" on stories;
 create policy "authenticated can read all"
   on stories for select
   to authenticated
   using (true);
 
+drop policy if exists "authenticated can create" on stories;
 create policy "authenticated can create"
   on stories for insert
   to authenticated
   with check (true);
 
+drop policy if exists "authenticated can update" on stories;
 create policy "authenticated can update"
   on stories for update
   to authenticated
@@ -79,6 +83,7 @@ create table if not exists story_versions (
 alter table story_versions enable row level security;
 
 -- Policy: anon can read versions of published stories
+drop policy if exists "anon can read published story versions" on story_versions;
 create policy "anon can read published story versions"
   on story_versions for select
   to anon
@@ -90,12 +95,14 @@ create policy "anon can read published story versions"
   );
 
 -- Policy: authenticated can read all versions
+drop policy if exists "authenticated can read all versions" on story_versions;
 create policy "authenticated can read all versions"
   on story_versions for select
   to authenticated
   using (true);
 
 -- Policy: only service role can insert (controlled by admin)
+drop policy if exists "service role can insert versions" on story_versions;
 create policy "service role can insert versions"
   on story_versions for insert
   with check (true);
@@ -115,6 +122,7 @@ create table if not exists player_state (
 alter table player_state enable row level security;
 
 -- Policy: player can upsert their own state
+drop policy if exists "anon can read/write player state" on player_state;
 create policy "anon can read/write player state"
   on player_state for all
   to anon
@@ -141,6 +149,7 @@ create table if not exists player_responses (
 alter table player_responses enable row level security;
 
 -- Policy: player can insert/update their own responses
+drop policy if exists "anon can insert/update responses" on player_responses;
 create policy "anon can insert/update responses"
   on player_responses for all
   to anon
@@ -164,10 +173,9 @@ create index if not exists idx_player_responses_envelope_choice on player_respon
 -- INITIAL DATA
 -- ───────────────────────────────────────────────────────────────────────────────
 
--- Insert placeholder published story (will be replaced by admin export)
--- Start with empty story so player doesn't crash
+-- Insert placeholder published story only if no published row exists yet.
 insert into stories (prologue, days, flow_map, is_published, published_at, version_number, change_notes)
-values (
+select
   '{"lines": ["Loading story..."], "signoff": "..."}',
   '[]',
   '{"rules": []}',
@@ -175,4 +183,8 @@ values (
   now(),
   1,
   'Initial placeholder'
-) on conflict do nothing;
+where not exists (
+  select 1
+  from stories
+  where is_published = true
+);

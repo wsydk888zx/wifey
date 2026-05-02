@@ -60,7 +60,7 @@ check_player_content() {
   elif echo "$RESPONSE" | grep -q "PGRST205\|not find the table"; then
     echo "  FAIL: 'stories' table not found in Supabase"
     echo "        Migration not applied — run: supabase login && supabase db push"
-    echo "        Migration file: supabase/migrations/20260430_story_content_centralization.sql"
+    echo "        Migration file: supabase/migrations/20260502042315_story_content_centralization.sql"
     echo "        Player will fall back to bundled storyData.js until this is applied"
     # Warn but don't exit — deploy already happened, this is informational
   elif echo "$RESPONSE" | grep -q '"id"'; then

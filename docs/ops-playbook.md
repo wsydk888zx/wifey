@@ -201,7 +201,7 @@ supabase db push  # if not applied yet
 ```
 supabase/migrations/
   20260430_push_notifications.sql   — push_subscriptions, sent_notifications tables
-  20260430_story_content_centralization.sql — stories, story_versions, player_state, player_responses tables
+  20260502042315_story_content_centralization.sql — stories, story_versions, player_state, player_responses tables
 ```
 
 **How to apply:**
