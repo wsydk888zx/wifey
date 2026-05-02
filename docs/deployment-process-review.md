@@ -1,7 +1,7 @@
 # Deployment Process Review & Remediation Plan
 
 **Date:** 2026-05-01
-**Status:** Phase A complete (2026-05-01). Phase B complete (2026-05-01). Phase C complete (2026-05-01).
+**Status:** Phase A complete (2026-05-01). Phase B complete (2026-05-01). Phase C complete (2026-05-01). Phase D planned.
 
 ---
 
@@ -52,6 +52,51 @@ Memory:
 
 Not yet verified (needs your hands or a Vercel re-auth):
 - That the deployed admin Vercel project's env vars *actually match* `.env.local`. The MCP can't see your team (403). The new banner will surface this in 5 seconds the next time you open the deployed admin if they don't match — that's the verification.
+
+---
+
+### 2026-05-01 — Phase D planned (next session)
+
+**Audit findings:**
+- Smoke check script hardcoded player URL and had incorrect title check — fixed locally, smoke check now passes.
+- Deploy script structure validated; correctly rejects missing/invalid arguments.
+- Pre-push hook structure validated; runs preflight before every push.
+- Both admin and player builds passing green on every preflight run.
+
+**Phase D scope:** Extend pre-deploy validation to catch data + infrastructure issues before they reach Vercel.
+
+---
+
+## Phase D — data & infrastructure checks (next session, ~45 min)
+
+**D1. Supabase migration validation**
+- Add to `preflight.sh`: check that all migrations in `supabase/migrations/` have been applied.
+- Get migration status: `supabase migration list` (requires `supabase login`).
+- Warn if migrations are pending: "Apply with: supabase db push".
+- Player deploy should fail (not warn) if migrations aren't applied, since player expects `stories` table.
+
+**D2. Auto-discover Vercel URLs**
+- Replace hardcoded `PLAYER_URL` in `verify-deploy.sh` with Vercel API lookup.
+- Read from `.vercel/project.json` → query Vercel API for latest production deployment URL.
+- Make `ADMIN_URL` optional but auto-discoverable the same way, instead of requiring env var.
+- Removes brittle hardcoded URLs if Vercel domains ever change.
+
+**D3. AI server health check (admin-only)**
+- Add to `preflight.sh` (or deploy script pre-admin-deploy): check that `http://localhost:3001/api/card-draft` responds.
+- Only runs if admin is being deployed (not for player-only deploys).
+- Helps catch "admin deployed but AI features broken because server isn't running" issues.
+- Exact endpoint: local dev server on port 3001 (from `scripts/dev-admin.mjs`).
+
+**D4. Content publication verification**
+- Add to smoke check (after deploy succeeds): fetch player URL, check that it loads published story from Supabase, not bundled fallback.
+- Query player's live state to confirm `lastPublishedAt` timestamp is recent (within last 5 minutes of deploy).
+- Catches: published story not actually live, Supabase fetch failing, fallback being served instead.
+
+**Why these matter:**
+- **D1** prevents "player loads old story" (missing migration = no table = bundled fallback).
+- **D2** makes the deploy script more robust to Vercel domain changes and works for both surfaces without env var setup.
+- **D3** catches "admin deploys but AI endpoints 404" immediately instead of at author's next session.
+- **D4** verifies the full flow: admin publishes → Supabase receives → player fetches → player displays. If any link breaks, we know in 30 seconds.
 
 ---
 
