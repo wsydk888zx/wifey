@@ -15,8 +15,8 @@ fail() { echo "FAIL: $1"; exit 1; }
 check_player() {
   echo "→ Checking player ($PLAYER_URL)..."
   BODY=$(curl -sL --max-time 15 "$PLAYER_URL")
-  echo "$BODY" | grep -qi "Yours, Watching" \
-    || fail "Player URL doesn't contain expected title 'Yours, Watching'. Got: $(echo "$BODY" | head -3)"
+  echo "$BODY" | grep -qi "For her\|apple-mobile-web-app-title" \
+    || fail "Player URL doesn't contain expected player markers. Got: $(echo "$BODY" | head -3)"
   echo "$BODY" | grep -qi "AdminPanel\|admin-root\|admin dashboard" \
     && fail "Player URL is serving the admin panel!" || true
   pass "Player is serving the player app"
