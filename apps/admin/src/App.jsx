@@ -982,6 +982,11 @@ function AdminApp({ session }) {
       setPublishSuccess(`Published version ${result.versionNumber}`);
       setNotice({ type: 'success', text: `Story published as version ${result.versionNumber}` });
 
+      // Switch to the new draft so subsequent auto-saves don't overwrite the published row
+      if (result.newDraftId) {
+        setDraft(prev => ({ ...prev, storyId: result.newDraftId }));
+      }
+
       // Reload versions
       const versions = await getStoryVersions(supabase, draft.storyId);
       setStoryVersions(versions);

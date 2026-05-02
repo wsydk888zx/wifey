@@ -191,22 +191,47 @@ export async function publishStory(supabase, draft, changeNotes = '') {
 
     if (versionError) throw versionError;
 
-    // Mark story as published
+    // Unpublish all previously published rows
+    const { error: unpublishError } = await supabase
+      .from('stories')
+      .update({ is_published: false })
+      .eq('is_published', true);
+
+    if (unpublishError) throw unpublishError;
+
+    // Mark this draft as the new published story
+    const publishedAt = new Date().toISOString();
     const { error: publishError } = await supabase
       .from('stories')
       .update({
         is_published: true,
-        published_at: new Date().toISOString(),
+        published_at: publishedAt,
         version_number: newVersionNumber,
       })
       .eq('id', story.id);
 
     if (publishError) throw publishError;
 
+    // Create a fresh draft so the admin always has a working draft after publishing
+    const { data: newDraft, error: draftError } = await supabase
+      .from('stories')
+      .insert([{
+        prologue: story.prologue,
+        days: story.days,
+        flow_map: story.flow_map,
+        is_published: false,
+        version_number: newVersionNumber,
+        change_notes: `Draft after publish at ${new Date().toLocaleTimeString()}`,
+      }])
+      .select();
+
+    if (draftError) throw draftError;
+
     return {
       versionId: versionData[0]?.id,
       versionNumber: newVersionNumber,
-      publishedAt: new Date().toISOString(),
+      publishedAt,
+      newDraftId: newDraft[0]?.id,
     };
   } catch (err) {
     console.error('Error publishing story:', err);
