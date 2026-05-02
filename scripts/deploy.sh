@@ -46,7 +46,7 @@ deploy_project() {
   local vercel_output
   vercel_output=$(vercel --prod --yes 2>&1 | tee /dev/stderr)
   local deployed_url
-  deployed_url=$(echo "$vercel_output" | grep -E "https://[^ ]+\.vercel\.app" | tail -1 | grep -oE "https://[^ ]+" || true)
+  deployed_url=$(echo "$vercel_output" | grep -oE "https://[a-zA-Z0-9._-]+\.vercel\.app" | tail -1 || true)
 
   cleanup_vercel_link
 

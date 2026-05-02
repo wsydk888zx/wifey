@@ -56,7 +56,9 @@ if [ -d "$MIGRATION_DIR" ]; then
   MIGRATION_FILES=$(ls "$MIGRATION_DIR"/*.sql 2>/dev/null | wc -l | tr -d ' ')
   echo "  Local migration files: $MIGRATION_FILES"
   if command -v supabase &>/dev/null; then
-    MIGRATION_STATUS=$(supabase migration list 2>&1 || true)
+    # Read access token from env, or fall back to the MCP config (never hardcoded here)
+    _SB_TOKEN="${SUPABASE_ACCESS_TOKEN:-$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.claude/mcp.json'))); print(d['mcpServers']['supabase']['args'][-1])" 2>/dev/null || true)}"
+    MIGRATION_STATUS=$(SUPABASE_ACCESS_TOKEN="$_SB_TOKEN" supabase migration list 2>&1 || true)
     if echo "$MIGRATION_STATUS" | grep -q "│.*false\|not applied"; then
       echo "WARN: Unapplied Supabase migrations detected — run: supabase db push"
       echo "      Player will fall back to bundled story content if stories table is missing"
