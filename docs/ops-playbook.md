@@ -258,6 +258,79 @@ vercel --prod --yes --cwd apps/admin
 
 ---
 
+## 8. Admin story edits don't save / content resets after publish ⚠️ HIGH FREQUENCY
+
+**Symptom:** Edits made in the admin disappear on refresh. After clicking Publish, the admin shows blank content on next load. Story content resets to defaults.
+
+**Root causes (all three fixed 2026-05-02):**
+
+| Bug | What happened | Fix |
+|---|---|---|
+| `publishStory` never un-published old rows | After publish, two `is_published = true` rows existed. Next load found no `is_published = false` draft → fell back to blank defaults | Now unpublishes all old rows before publishing |
+| No draft created after publish | Published row was the only copy. Next auto-save created a blank new row and clobbered real content | `publishStory` now creates a fresh draft copied from the published content immediately after publishing |
+| `saveAdminDraft` mutated React state directly | `draft.storyId = data[0].id` didn't flow through `setDraft` → storyId never stuck → every auto-save INSERTed a new blank row instead of UPDATEing existing | Returns `{ newStoryId }`, caller calls `setDraft(prev => ({ ...prev, storyId }))` |
+
+**Invariants that must hold at all times in the `stories` table:**
+- Exactly **one** row with `is_published = false` (the working draft)
+- Exactly **one** row with `is_published = true` (the live published story)
+- If these get out of sync, the admin loads wrong content or blank defaults
+
+**How to check the DB state:**
+```bash
+SUPABASE_ACCESS_TOKEN=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.claude/mcp.json'))); print(d['mcpServers']['supabase']['args'][-1])") \
+  supabase db query --linked "SELECT id, is_published, jsonb_array_length(days) as days, change_notes FROM stories ORDER BY id;"
+```
+
+**How to fix a bad DB state:**
+```bash
+# If both rows are published (is_published=true) — unpublish the older/empty one:
+supabase db query --linked "UPDATE stories SET is_published=false WHERE id=<old_id>;"
+
+# If both rows are unpublished — publish the one with real content:
+supabase db query --linked "UPDATE stories SET is_published=true, published_at=now() WHERE id=<real_id>;"
+
+# If the draft row has wrong content — copy from published:
+supabase db query --linked "
+UPDATE stories
+SET prologue=(SELECT prologue FROM stories WHERE is_published=true),
+    days=(SELECT days FROM stories WHERE is_published=true),
+    flow_map=(SELECT flow_map FROM stories WHERE is_published=true),
+    updated_at=now()
+WHERE is_published=false;
+"
+```
+
+---
+
+## 9. Supabase credentials — how they work on this project
+
+**No `supabase login` needed.** The personal access token is stored in `~/.claude/mcp.json` under `mcpServers.supabase.args[-1]`. All scripts read it from there at runtime:
+
+```bash
+# Extract the token (used internally by scripts/preflight.sh and scripts/deploy.sh):
+python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.claude/mcp.json'))); print(d['mcpServers']['supabase']['args'][-1])"
+```
+
+**Never hardcode this token in source files.** GitHub push protection will block the push and the token will need to be rotated. The scripts read it dynamically from `~/.claude/mcp.json` — this is the pattern, do not change it.
+
+**To run any Supabase CLI command:**
+```bash
+SUPABASE_ACCESS_TOKEN=$(python3 -c "import json,os; d=json.load(open(os.path.expanduser('~/.claude/mcp.json'))); print(d['mcpServers']['supabase']['args'][-1])") \
+  supabase <command> --linked
+```
+
+**To apply migrations:**
+```bash
+SUPABASE_ACCESS_TOKEN=... supabase db push --linked --yes
+```
+
+**To run arbitrary SQL:**
+```bash
+SUPABASE_ACCESS_TOKEN=... supabase db query --linked "SELECT ...;"
+```
+
+---
+
 ## Deployment Checklist (run before every push)
 
 ```bash
