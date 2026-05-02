@@ -1,5 +1,18 @@
 # Yours, Watching — Project Guide for Claude
 
+## ⚠️ READ FIRST — before any deployment, auth, build, Supabase, or "why is X broken" task
+
+**Open [docs/ops-playbook.md](docs/ops-playbook.md) before proposing solutions.** It catalogues every recurring issue on this project (admin login broken after deploy, player URL serving admin, build drift, content desync, etc.) with the exact root cause and fix. Do not propose generic diagnostic steps for problems already solved there.
+
+## Known facts (do not re-discover these)
+
+- **Two confirmed Supabase auth users exist** — `jondcarpenter@outlook.com` (primary) + a backup. Both show as "Confirmed" in the Supabase dashboard. Never tell the user "you don't have an admin account."
+- **Two Vercel projects** under team `team_2ZGvGqwT3x8G87WEYTAkd4Ax`:
+  - `wifey` (admin) — `prj_9d9FqwIQB8S4z5JGCponKFkhXQxU` — builds from `apps/admin`
+  - `wifey-player` — `prj_7Rx0XM75xrhLLiQ9d18MUK0UThKd` — builds from `apps/player`
+- **Supabase project ID:** `bxeoleynlmnhagveqrmn`.
+- **Admin Supabase config is baked in at BUILD time** via `import.meta.env.VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` ([apps/admin/src/App.jsx:60](apps/admin/src/App.jsx:60)). If the Vercel admin project's env vars are missing or stale, the deployed bundle ships with a broken Supabase client and login silently fails. **First diagnostic for "admin login broken after deploy" is always Vercel env-var sync, not Supabase user state.** See ops-playbook §7.
+
 ## What this project is
 
 A private interactive story experience ("Yours, Watching"). The recipient moves through days and envelopes, makes choices, and sees branching narrative.

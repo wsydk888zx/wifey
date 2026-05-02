@@ -57,9 +57,19 @@ const ADMIN_LOCAL_SERVICE_BASE_URL =
   import.meta.env.VITE_ADMIN_LOCAL_SERVICE_BASE_URL ||
   (import.meta.env.DEV ? 'http://127.0.0.1:8787' : '');
 
-const supabase = import.meta.env.VITE_SUPABASE_URL
-  ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
-  : null;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_CONFIG_MISSING = !SUPABASE_URL || !SUPABASE_ANON_KEY;
+const supabase = SUPABASE_CONFIG_MISSING
+  ? null
+  : createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+if (SUPABASE_CONFIG_MISSING && typeof console !== 'undefined') {
+  console.error(
+    '[admin] Supabase env vars missing at build time. ' +
+    'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set on the Vercel project (or in apps/admin/.env.local for local dev). ' +
+    'Login will not work until this is fixed. See docs/ops-playbook.md §7.'
+  );
+}
 const ADMIN_AI_BASE_URL =
   import.meta.env.VITE_ADMIN_AI_BASE_URL || ADMIN_LOCAL_SERVICE_BASE_URL;
 const AI_DRAFT_GOAL_OPTIONS = [
@@ -455,6 +465,23 @@ function LoginScreen() {
     },
     error: { color: '#c0392b', fontSize: '0.85rem', textAlign: 'center' },
   };
+
+  if (SUPABASE_CONFIG_MISSING) {
+    return (
+      <div style={S.root}>
+        <div style={{ ...S.card, borderColor: '#c0392b' }}>
+          <h1 style={{ ...S.heading, color: '#c0392b' }}>Configuration error</h1>
+          <p style={{ fontSize: '0.9rem', lineHeight: 1.5 }}>
+            Supabase env vars are missing in this build. Login cannot work.
+          </p>
+          <p style={{ fontSize: '0.85rem', lineHeight: 1.5 }}>
+            Fix: set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> on the
+            Vercel <code>wifey</code> project, then redeploy. See <code>docs/ops-playbook.md §7</code>.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={S.root}>

@@ -13,6 +13,17 @@ This document captures every issue that has recurred across multiple sessions, i
 - Email confirmation required but not completed for the auth user
 - Admin app crashes on render (JS error) before auth state resolves — shows blank or broken UI instead of clear error
 
+**Error message decoder — what Supabase actually returns:**
+
+| What you see in the UI / console | What it means | Where to look |
+|---|---|---|
+| `Invalid login credentials` | Wrong password OR the user doesn't exist at all. Supabase intentionally returns the same message for both to prevent user enumeration. | Supabase dashboard → Auth → Users — confirm `jondcarpenter@outlook.com` is listed and "Confirmed". If the user exists and is confirmed, the password is wrong. |
+| `Email not confirmed` | User was created but never confirmed (or was reset). | Dashboard → Auth → Users → click user → "Confirm email" button. |
+| `User not found` | Extremely rare — only appears if the auth schema is in a bad state. Should not happen on this project. | Re-check which Supabase project `.env.local` points to (wrong project = wrong user list). |
+| Login form does nothing / spinner hangs | The Supabase client is `null` — env vars missing at build time (§7 problem, not §1). | Open DevTools → Console and look for `[admin] Supabase env vars missing`. See §7. |
+| Red "Configuration error" banner instead of login form | Same as above — `SUPABASE_CONFIG_MISSING = true` at build time. | See §7. |
+| `Failed to fetch` / network error on login submit | CORS mismatch, wrong Supabase URL, or Supabase project paused. | DevTools → Network → login request URL. Should be `https://bxeoleynlmnhagveqrmn.supabase.co/auth/v1/token`. If it's a different URL, §7 env-var problem. If correct URL but 503, the Supabase project may be paused — log in to supabase.com to resume it. |
+
 **How to diagnose:**
 ```bash
 # 1. Verify the anon key still works against Supabase
@@ -96,18 +107,24 @@ rm -rf .vercel/
 | `wifey` (admin) | `prj_9d9FqwIQB8S4z5JGCponKFkhXQxU` | admin URL | `apps/admin` |
 | `wifey-player` | `prj_7Rx0XM75xrhLLiQ9d18MUK0UThKd` | `wifey-player.vercel.app` | `apps/player` |
 
-**How to deploy the player explicitly:**
+**How to deploy (preferred — use the deploy script):**
 ```bash
-# From repo root — set project link to wifey-player, deploy, then clean up
+npm run deploy -- player   # deploy player only
+npm run deploy -- admin    # deploy admin only
+npm run deploy -- both     # deploy both + smoke check
+```
+
+The script runs preflight, sets the correct Vercel project link, deploys, cleans up, and runs a smoke check automatically.
+
+**Manual fallback if the script isn't available:**
+```bash
+# Player
 mkdir -p .vercel && echo '{"projectId":"prj_7Rx0XM75xrhLLiQ9d18MUK0UThKd","orgId":"team_2ZGvGqwT3x8G87WEYTAkd4Ax"}' > .vercel/project.json
 vercel --prod --yes
 rm -rf .vercel/
-```
 
-**How to deploy the admin explicitly:**
-```bash
-# From repo root — uses root-linked wifey project
-vercel --prod --yes
+# Admin
+vercel --prod --yes  # uses root-linked wifey project
 ```
 
 ---
@@ -133,6 +150,19 @@ npm run build --workspace @wifey/admin
 npm run build --workspace @wifey/player
 # Both must succeed with zero errors before committing
 ```
+
+**Quick import audit** (run if you're unsure whether all exports still exist):
+```bash
+# List every export from supabaseStorage.js
+grep "^export" apps/admin/src/supabaseStorage.js
+
+# List every import App.jsx takes from supabaseStorage.js
+grep -A 30 "from './supabaseStorage.js'" apps/admin/src/App.jsx
+```
+Cross-check: every name in the App.jsx import block must appear in the export list. As of 2026-05-01, the full export list is:
+`MAX_ADMIN_SNAPSHOTS`, `normalizeAdminTweaks`, `createDefaultAdminTweaks`, `createDefaultAdminDraft`, `loadAdminDraft`, `saveAdminDraft`, `publishStory`, `getStoryVersions`, `rollbackToVersion`, `createAdminSnapshot`, `downloadAdminExport`, `parseAdminImport`, `createAdminExport`, `createAdminPreviewPayload`, `subscribeToPlayerState`, `loadPublishedStory`, `clearAdminDraftStorage`, `createDraftFingerprint`.
+
+The Vite build will also catch any missing exports as a hard error — so `npm run build --workspace @wifey/admin` is the definitive check.
 
 ---
 
@@ -183,25 +213,64 @@ supabase db push
 
 ---
 
+## 7. Admin login broken after deploy ⚠️ HIGH FREQUENCY
+
+**Symptom:** Login screen shows on the deployed admin URL, credentials fail or do nothing, no obvious error in the UI. Worked locally five minutes ago. Has happened on nearly every admin deploy.
+
+**Root cause (the one that's actually been hitting us):** Admin Supabase config is baked into the bundle at **build time** via `import.meta.env.VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` ([apps/admin/src/App.jsx:60](../apps/admin/src/App.jsx)). Vite reads those from:
+
+- **Locally:** `apps/admin/.env.local` (gitignored, never reaches Vercel).
+- **On Vercel:** the project's Environment Variables in the dashboard.
+
+If the Vercel `wifey` project's env vars are missing, stale, or pointed at a different Supabase project than your local, every deploy ships a bundle whose Supabase client is `null` (or wired to the wrong project). The login form then fails silently because `supabase.auth.signInWithPassword` either throws on null or hits the wrong backend.
+
+**Always check this FIRST.** Don't go hunting for "is the user confirmed?" or "is the password right?" — those are §1 problems, not §7 problems.
+
+**Diagnostic — 60 seconds:**
+
+1. Open the deployed admin URL. If you see the red **"Configuration error"** banner instead of the login form, env vars are missing — skip to fix.
+2. Otherwise, open DevTools → Console immediately on page load. If you see `[admin] Supabase env vars missing at build time...` — same answer, env vars missing.
+3. If neither shows but login still fails, the env vars are *present but wrong* (pointing at a different Supabase project, or stale anon key). Open DevTools → Network → submit login → inspect the request URL. If it's not `https://bxeoleynlmnhagveqrmn.supabase.co/...`, the URL is wrong.
+
+**Fix:**
+
+```bash
+# 1. Confirm what local has
+cat apps/admin/.env.local
+
+# 2. List Vercel env vars on the admin project
+vercel env ls production --scope <team> --cwd apps/admin
+# (or use the dashboard: vercel.com → wifey project → Settings → Environment Variables)
+
+# 3. If missing or different, set them
+vercel env add VITE_SUPABASE_URL production --scope <team> --cwd apps/admin
+vercel env add VITE_SUPABASE_ANON_KEY production --scope <team> --cwd apps/admin
+
+# 4. Redeploy — env-var changes do NOT propagate to existing deployments
+vercel --prod --yes --cwd apps/admin
+```
+
+**Prevention:**
+
+- A fail-loud guard now lives in `App.jsx` (red banner + console error) so this surfaces in 5 seconds instead of an hour. Do not remove it.
+- Phase B of `docs/deployment-process-review.md` adds a pre-deploy `scripts/deploy.sh` that diffs `.env.local` against Vercel env vars and aborts if they don't match.
+- Whenever Supabase keys rotate, update **both** `apps/admin/.env.local` AND the Vercel `wifey` project env vars in the same change.
+
+---
+
 ## Deployment Checklist (run before every push)
 
 ```bash
-# 1. Build both apps
-npm run build --workspace @wifey/admin
-npm run build --workspace @wifey/player
-
-# 2. Confirm .vercel/ is not tracked
-git ls-files .vercel/  # must be empty
-
-# 3. Stage specific files (never git add -A)
+# 1. Stage specific files (never git add -A)
 git add apps/admin/src/... apps/player/src/... packages/...
 
-# 4. Commit and push
+# 2. Commit and push
+# The pre-push hook (scripts/preflight.sh) runs both builds + .vercel/ check automatically.
 git commit -m "..."
 git push origin main
 
-# 5. If player didn't auto-deploy, deploy it explicitly
-mkdir -p .vercel && echo '{"projectId":"prj_7Rx0XM75xrhLLiQ9d18MUK0UThKd","orgId":"team_2ZGvGqwT3x8G87WEYTAkd4Ax"}' > .vercel/project.json
-vercel --prod --yes
-rm -rf .vercel/
+# 3. Deploy via the script (preflight + vercel + smoke check built in)
+npm run deploy -- player   # or admin, or both
 ```
+
+If `git push` is rejected by the pre-push hook, fix the build error before pushing — don't use `--no-verify` unless it's a genuine emergency.

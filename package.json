@@ -15,7 +15,10 @@
     "promote:content": "node scripts/promote-release-content.mjs",
     "validate:content": "node scripts/validate-content.mjs",
     "test:core": "node --test packages/story-core/test/*.test.mjs",
-    "verify": "npm run validate:content && npm run test:core && npm run build --workspace @wifey/admin -- --outDir /tmp/wifey-admin-build --emptyOutDir && npm run build --workspace @wifey/player -- --outDir /tmp/wifey-player-build --emptyOutDir"
+    "verify": "npm run validate:content && npm run test:core && npm run build --workspace @wifey/admin -- --outDir /tmp/wifey-admin-build --emptyOutDir && npm run build --workspace @wifey/player -- --outDir /tmp/wifey-player-build --emptyOutDir",
+    "preflight": "bash scripts/preflight.sh",
+    "deploy": "bash scripts/deploy.sh",
+    "smoke": "bash scripts/verify-deploy.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0"
