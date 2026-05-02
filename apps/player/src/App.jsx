@@ -4,10 +4,11 @@ import { createClient } from '@supabase/supabase-js';
 import { defaultContent } from '@wifey/story-content';
 import { subscribeToPush, getExistingSubscription } from './usePushSubscription.js';
 import {
-  TWEAK_DEFAULTS,
+  STORY_SETTINGS_DEFAULTS,
   buildCompleteFlowMap,
   getDayEnvelopes,
   normalizeContentModel,
+  normalizeStorySettings,
   replacePlaceholders,
   toRoman,
 } from '@wifey/story-core';
@@ -20,23 +21,6 @@ const supabase =
   import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
     ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
     : null;
-
-function normalizePlayerTweaks(tweaks = {}) {
-  const source = tweaks && typeof tweaks === 'object' ? tweaks : {};
-  const intensity = Number(source.intensity);
-
-  return {
-    herName: Object.hasOwn(source, 'herName')
-      ? String(source.herName ?? '')
-      : TWEAK_DEFAULTS.herName,
-    hisName: Object.hasOwn(source, 'hisName')
-      ? String(source.hisName ?? '')
-      : TWEAK_DEFAULTS.hisName,
-    intensity: Number.isFinite(intensity)
-      ? Math.min(10, Math.max(1, Math.round(intensity)))
-      : TWEAK_DEFAULTS.intensity,
-  };
-}
 
 // ── Supabase story and state persistence ──────────────────────────────────────
 
@@ -61,9 +45,12 @@ async function fetchPublishedStory() {
       prologue: story.prologue || { lines: [], signoff: '' },
       days: Array.isArray(story.days) ? story.days : [],
       flowMap: story.flow_map || { rules: [] },
-      tweaks: normalizePlayerTweaks(
-        story.tweaks ||
-        (story.flow_map && typeof story.flow_map === 'object' ? story.flow_map.tweaks : undefined),
+      settings: normalizeStorySettings(
+        story.storySettings ||
+        story.settings ||
+        (story.flow_map && typeof story.flow_map === 'object'
+          ? story.flow_map.storySettings ?? story.flow_map.settings ?? story.flow_map.tweaks
+          : undefined),
       ),
     };
   } catch (err) {
@@ -216,8 +203,8 @@ function TopBar({ onHistory }) {
   );
 }
 
-function ChoiceHistoryPanel({ entries, tweaks, open, onClose }) {
-  const rp = (text) => replacePlaceholders(text, tweaks);
+function ChoiceHistoryPanel({ entries, storySettings, open, onClose }) {
+  const rp = (text) => replacePlaceholders(text, storySettings);
   return (
     <div className={`choice-history-panel ${open ? 'open' : ''}`}>
       <div className="choice-history-header">
@@ -256,8 +243,8 @@ function ChoiceHistoryPanel({ entries, tweaks, open, onClose }) {
   );
 }
 
-function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayIds, tweaks }) {
-  const rp = (text) => replacePlaceholders(text, tweaks);
+function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayIds, storySettings }) {
+  const rp = (text) => replacePlaceholders(text, storySettings);
   const visibleDays = days
     .map((day, index) => ({
       day,
@@ -380,7 +367,7 @@ function NotificationPrompt({ onDone }) {
 
 // ── Player app (receives pre-loaded data as props) ────────────────────────────
 
-function PlayerApp({ content, tweaks, flowMap, initialState }) {
+function PlayerApp({ content, storySettings, flowMap, initialState }) {
   const days = content?.days || [];
   const flattened = useMemo(() => flattenDays(days), [days]);
 
@@ -536,7 +523,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
   const chosenChoice = env?.choices?.find((choice) => choice.id === chosen) || null;
   const responseKey = chosenChoice ? `${env.id}::${chosenChoice.id}` : null;
   const currentResponses = responseKey ? formResponses[responseKey] || {} : {};
-  const rp = useCallback((text) => replacePlaceholders(text, tweaks), [tweaks]);
+  const rp = useCallback((text) => replacePlaceholders(text, storySettings), [storySettings]);
 
   const handleOpenEnvelope = () => {
     if (envState !== 'resting') return;
@@ -550,7 +537,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
   const queueTextPrompt = (prompt) => {
     setTextPrompts((prev) => [prompt, ...prev]);
     void sendTextPromptNotification(prompt);
-    const webhookUrl = tweaks.shortcutWebhookUrl?.trim();
+    const webhookUrl = storySettings.shortcutWebhookUrl?.trim();
     if (webhookUrl) {
       fetch(webhookUrl, {
         method: 'POST',
@@ -566,7 +553,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
     const textConfig = chosenChoice.card?.realText;
     if (textConfig?.enabled) {
       const message = rp(textConfig.message || '').trim();
-      const recipient = (textConfig.recipient || tweaks.recipientPhone || '').trim();
+      const recipient = (textConfig.recipient || storySettings.recipientPhone || '').trim();
       if (message) {
         queueTextPrompt({
           id: `text-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -644,7 +631,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
       <div className="app">
         <Prologue
           prologue={content.prologue}
-          tweaks={tweaks}
+          storySettings={storySettings}
           dayCount={days.length}
           envelopeCount={flattened.length}
           onBegin={() => setShowPrologue(false)}
@@ -659,7 +646,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
         <TopBar onHistory={() => setHistoryOpen((open) => !open)} />
         <ChoiceHistoryPanel
           entries={historyEntries}
-          tweaks={tweaks}
+          storySettings={storySettings}
           open={historyOpen}
           onClose={() => setHistoryOpen(false)}
         />
@@ -670,7 +657,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
             currentIdx={flattened.length}
             completedIdx={completedIdx}
             activatedDayIds={activatedDayIds}
-            tweaks={tweaks}
+            storySettings={storySettings}
           />
           <div className="main main-finale">
             <div className="finale">
@@ -715,7 +702,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
       <TopBar onHistory={() => setHistoryOpen((open) => !open)} />
       <ChoiceHistoryPanel
         entries={historyEntries}
-        tweaks={tweaks}
+        storySettings={storySettings}
         open={historyOpen}
         onClose={() => setHistoryOpen(false)}
       />
@@ -726,7 +713,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
           currentIdx={idx}
           completedIdx={completedIdx}
           activatedDayIds={activatedDayIds}
-          tweaks={tweaks}
+          storySettings={storySettings}
         />
         <div
           className={`main ${
@@ -745,8 +732,8 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
               </div>
               <Envelope
                 envelope={{ ...env, label: envDisplay?.label || env.label }}
-                addressee={tweaks.herName}
-                tweaks={tweaks}
+                addressee={storySettings.herName}
+                storySettings={storySettings}
                 state={envState}
                 onOpen={handleOpenEnvelope}
               />
@@ -793,8 +780,8 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
                 label: envDisplay?.label || env.label,
                 timeLabel: envDisplay?.timeLabel || env.timeLabel,
               }}
-              addressee={tweaks.herName}
-              tweaks={tweaks}
+              addressee={storySettings.herName}
+              storySettings={storySettings}
               completed={completedIdx.has(idx)}
               onComplete={handleComplete}
               onReselect={handleReselect}
@@ -815,7 +802,7 @@ function PlayerApp({ content, tweaks, flowMap, initialState }) {
 function App() {
   const [ready, setReady] = useState(false);
   const [content, setContent] = useState(null);
-  const [tweaks, setTweaks] = useState(TWEAK_DEFAULTS);
+  const [storySettings, setStorySettings] = useState(STORY_SETTINGS_DEFAULTS);
   const [flowMap, setFlowMap] = useState({ rules: [] });
   const [initialState, setInitialState] = useState(null);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
@@ -835,7 +822,7 @@ function App() {
       // Load published story from Supabase (or use default)
       const storyData = await fetchPublishedStory();
       setContent(normalizeContentModel(storyData));
-      setTweaks(normalizePlayerTweaks(storyData.tweaks));
+      setStorySettings(normalizeStorySettings(storyData.settings));
 
       // Load player state
       const stateResult = await fetchRemoteState();
@@ -856,7 +843,7 @@ function App() {
     <>
       <PlayerApp
         content={content}
-        tweaks={tweaks}
+        storySettings={storySettings}
         flowMap={flowMap}
         initialState={initialState}
       />

@@ -1,4 +1,4 @@
-import { TWEAK_DEFAULTS } from './constants.js';
+import { STORY_SETTINGS_DEFAULTS } from './constants.js';
 
 export const PLACEHOLDER_TOKEN_OPTIONS = [
   { token: '{{herName}}', label: 'her name' },
@@ -18,12 +18,25 @@ export function hasPlaceholderTokens(text) {
   return typeof text === 'string' && PLACEHOLDER_TOKEN_PATTERN.test(text);
 }
 
-export function replacePlaceholders(text, tweaks = {}) {
+export function normalizeStorySettings(storySettings = {}) {
+  const source = storySettings && typeof storySettings === 'object' ? storySettings : {};
+
+  return {
+    herName: Object.hasOwn(source, 'herName')
+      ? String(source.herName ?? '')
+      : STORY_SETTINGS_DEFAULTS.herName,
+    hisName: Object.hasOwn(source, 'hisName')
+      ? String(source.hisName ?? '')
+      : STORY_SETTINGS_DEFAULTS.hisName,
+  };
+}
+
+export function replacePlaceholders(text, storySettings = {}) {
   if (typeof text !== 'string') return text;
 
-  const merged = { ...TWEAK_DEFAULTS, ...tweaks };
-  const her = String(merged.herName || TWEAK_DEFAULTS.herName).toLowerCase();
-  const his = String(merged.hisName || TWEAK_DEFAULTS.hisName).toLowerCase();
+  const merged = normalizeStorySettings(storySettings);
+  const her = String(merged.herName || STORY_SETTINGS_DEFAULTS.herName).toLowerCase();
+  const his = String(merged.hisName || STORY_SETTINGS_DEFAULTS.hisName).toLowerCase();
   const Her = her.charAt(0).toUpperCase() + her.slice(1);
   const His = his.charAt(0).toUpperCase() + his.slice(1);
 
@@ -38,7 +51,7 @@ export function replacePlaceholders(text, tweaks = {}) {
     .replaceAll('{his}', his);
 }
 
-export function previewPlaceholders(text, tweaks = {}) {
+export function previewPlaceholders(text, storySettings = {}) {
   if (!hasPlaceholderTokens(text)) return null;
-  return replacePlaceholders(text, tweaks);
+  return replacePlaceholders(text, storySettings);
 }

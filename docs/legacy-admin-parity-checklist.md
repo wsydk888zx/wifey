@@ -19,7 +19,7 @@ Real-text messaging is no longer part of the target product scope. The cleanup s
 | Legacy admin surface | Workspace admin status | Notes |
 |---|---|---|
 | Overview metrics | Covered | Workspace Overview shows validation, story metrics, draft actions, and day health. |
-| Settings: names and intensity | Covered | Workspace admin has a Settings section for persisted non-messaging `tweaks`: her name, his name, and intensity. |
+| Story settings: placeholder names | Covered | Workspace admin has a Story Settings section for persisted placeholder names: her name and his name. |
 | Prologue editor | Covered | Workspace Story section edits prologue lines and sign-off, previews output, saves draft, exports JSON, and can reset prologue. |
 | Day copy fields | Covered | Workspace edits day id, theme, branch-only state, and day prelude fields. |
 | Envelope copy fields | Covered | Workspace edits envelope id, label, time label, seal motif, branch-only state, intro, choice heading, and choice intro. |
@@ -56,7 +56,7 @@ Notes:
 1. Start the legacy root preview with `npm run legacy:preview`.
 2. Open the root app and confirm the prologue renders without the runtime error fallback.
 3. At the time, use the root Admin entry to open `AdminPanel.jsx`, switch through every tab, and close the panel.
-4. In Settings, edit names and intensity, then confirm placeholder text and saved state still use those values.
+4. In Story Settings, edit the names, then confirm placeholder text and saved state still use those values.
 5. In Prologue, edit one temporary line, save it, confirm the root preview reflects it, then restore the original value.
 6. In Story, edit a day theme, envelope label/intro, choice title/body/rule, and response field, then confirm each change persists after saving and reloading.
 7. Add and remove a temporary choice, envelope, and day in the legacy admin, then confirm reset restores the expected defaults.
@@ -72,7 +72,7 @@ Notes:
 
 Recommended order:
 
-1. Add workspace admin settings storage and UI for non-messaging `tweaks`: names and intensity. Done.
+1. Add workspace admin story settings storage and UI for persisted placeholder names. Done.
 2. Add workspace Story controls for ids and structure: day id, envelope id, choice id, add/remove day, add/remove envelope, add/remove choice, and a clear stance on envelope reordering. Done.
 3. Remove real-text messaging from the target scope: `card.realText` authoring, prompt queues, SMS links, recipient phone/webhook settings, and notification prompt handling. Done.
 4. Decide whether player progress reset belongs in `apps/admin`, `apps/player`, or remains legacy-only until the root preview is retired. Done: player progress reset belongs in `apps/player`.

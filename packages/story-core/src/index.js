@@ -1,8 +1,9 @@
-export { STORAGE_KEYS, TWEAK_DEFAULTS } from './constants.js';
+export { STORAGE_KEYS, STORY_SETTINGS_DEFAULTS, DEFAULT_AI_INTENSITY } from './constants.js';
 export { toRoman } from './formatting.js';
 export {
   PLACEHOLDER_TOKEN_OPTIONS,
   hasPlaceholderTokens,
+  normalizeStorySettings,
   previewPlaceholders,
   replacePlaceholders,
 } from './placeholders.js';

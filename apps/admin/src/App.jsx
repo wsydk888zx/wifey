@@ -3,15 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 
 import { defaultContent, defaultFlowMap } from '@wifey/story-content';
 import {
+  DEFAULT_AI_INTENSITY,
   FLOW_OPERATOR_OPTIONS,
   INPUT_TYPE_OPTIONS,
   PLACEHOLDER_TOKEN_OPTIONS,
-  TWEAK_DEFAULTS,
+  STORY_SETTINGS_DEFAULTS,
   buildCompleteFlowMap,
   flattenStoryEnvelopes,
   getFlowOperatorLabel,
   getInputTypeLabel,
   getDayEnvelopes,
+  normalizeStorySettings,
   previewPlaceholders,
   replacePlaceholders,
   isSelectInputType,
@@ -26,11 +28,9 @@ import {
   createAdminExport,
   createAdminSnapshot,
   createDefaultAdminDraft,
-  createDefaultAdminTweaks,
   createDraftFingerprint,
   downloadAdminExport,
   loadAdminDraft,
-  normalizeAdminTweaks,
   parseAdminImport,
   saveAdminDraft,
   publishStory,
@@ -387,8 +387,8 @@ function getEnvelopeDraftValue(envelope, field) {
   return envelope?.[field.key] || '';
 }
 
-function createPlaceholderPreviewRow(label, value, tweaks) {
-  const preview = previewPlaceholders(value, tweaks);
+function createPlaceholderPreviewRow(label, value, storySettings) {
+  const preview = previewPlaceholders(value, storySettings);
   if (!preview) return null;
 
   return {
@@ -597,7 +597,7 @@ function AdminApp() {
   const [aiTargetType, setAiTargetType] = useState('card');
   const [aiDraftGoal, setAiDraftGoal] = useState('rewrite');
   const [aiTone, setAiTone] = useState('romantic');
-  const [aiIntensity, setAiIntensity] = useState(() => draft.tweaks?.intensity || TWEAK_DEFAULTS.intensity);
+  const [aiIntensity, setAiIntensity] = useState(DEFAULT_AI_INTENSITY);
   const [aiBoundaries, setAiBoundaries] = useState('');
   const [aiNotes, setAiNotes] = useState('');
   const [aiDraftResult, setAiDraftResult] = useState(null);
@@ -617,7 +617,6 @@ function AdminApp() {
         const loaded = await loadAdminDraft(supabase, defaultContent, defaultFlowMap);
         setDraft(loaded);
         setSavedFingerprint(createDraftFingerprint(loaded));
-        setAiIntensity(loaded.tweaks?.intensity || TWEAK_DEFAULTS.intensity);
       } catch (err) {
         console.error('Failed to load draft:', err);
         setNotice({ tone: 'error', text: 'Failed to load draft from Supabase.' });
@@ -685,7 +684,7 @@ function AdminApp() {
   const content = draft.content;
   const flowMap = draft.flowMap;
   const snapshots = draft.snapshots;
-  const tweaks = normalizeAdminTweaks(draft.tweaks);
+  const storySettings = normalizeStorySettings(content.settings);
   const activeHeading = sectionHeadings[activeSection] || sectionHeadings.Overview;
   const mainHeadingId = activeHeading.id;
   const mainHeading = activeHeading.title;
@@ -726,49 +725,49 @@ function AdminApp() {
     ? selectedChoice.card.inputs
     : [];
   const previewCopy = (value, fallback = '') =>
-    replacePlaceholders(value || fallback, tweaks);
+    replacePlaceholders(value || fallback, storySettings);
   const placeholderPreviewRows = [
     ...prologueLines.map((line, index) =>
-      createPlaceholderPreviewRow(`Prologue Line ${index + 1}`, line, tweaks),
+      createPlaceholderPreviewRow(`Prologue Line ${index + 1}`, line, storySettings),
     ),
-    createPlaceholderPreviewRow('Prologue Sign-off', prologueSignoff, tweaks),
-    createPlaceholderPreviewRow('Day Theme', selectedDay?.theme, tweaks),
-    createPlaceholderPreviewRow('Day Prelude Kicker', selectedDay?.dayPrelude?.kicker, tweaks),
-    createPlaceholderPreviewRow('Day Prelude Heading', selectedDay?.dayPrelude?.heading, tweaks),
-    createPlaceholderPreviewRow('Day Prelude Body', selectedDay?.dayPrelude?.body, tweaks),
-    createPlaceholderPreviewRow('Day Prelude Button', selectedDay?.dayPrelude?.buttonLabel, tweaks),
-    createPlaceholderPreviewRow('Envelope Label', selectedEnvelope?.label, tweaks),
-    createPlaceholderPreviewRow('Envelope Time Label', selectedEnvelope?.timeLabel, tweaks),
-    createPlaceholderPreviewRow('Envelope Intro', selectedEnvelope?.intro, tweaks),
-    createPlaceholderPreviewRow('Choice Screen Heading', selectedEnvelope?.choicesHeading, tweaks),
-    createPlaceholderPreviewRow('Choice Screen Intro', selectedEnvelope?.choicesIntro, tweaks),
-    createPlaceholderPreviewRow('Choice Title', selectedChoice?.title, tweaks),
-    createPlaceholderPreviewRow('Choice Hint', selectedChoice?.hint, tweaks),
-    createPlaceholderPreviewRow('Card Heading', selectedChoice?.card?.heading, tweaks),
-    createPlaceholderPreviewRow('Card Body', selectedChoice?.card?.body, tweaks),
-    createPlaceholderPreviewRow('Card Rule', selectedChoice?.card?.rule, tweaks),
+    createPlaceholderPreviewRow('Prologue Sign-off', prologueSignoff, storySettings),
+    createPlaceholderPreviewRow('Day Theme', selectedDay?.theme, storySettings),
+    createPlaceholderPreviewRow('Day Prelude Kicker', selectedDay?.dayPrelude?.kicker, storySettings),
+    createPlaceholderPreviewRow('Day Prelude Heading', selectedDay?.dayPrelude?.heading, storySettings),
+    createPlaceholderPreviewRow('Day Prelude Body', selectedDay?.dayPrelude?.body, storySettings),
+    createPlaceholderPreviewRow('Day Prelude Button', selectedDay?.dayPrelude?.buttonLabel, storySettings),
+    createPlaceholderPreviewRow('Envelope Label', selectedEnvelope?.label, storySettings),
+    createPlaceholderPreviewRow('Envelope Time Label', selectedEnvelope?.timeLabel, storySettings),
+    createPlaceholderPreviewRow('Envelope Intro', selectedEnvelope?.intro, storySettings),
+    createPlaceholderPreviewRow('Choice Screen Heading', selectedEnvelope?.choicesHeading, storySettings),
+    createPlaceholderPreviewRow('Choice Screen Intro', selectedEnvelope?.choicesIntro, storySettings),
+    createPlaceholderPreviewRow('Choice Title', selectedChoice?.title, storySettings),
+    createPlaceholderPreviewRow('Choice Hint', selectedChoice?.hint, storySettings),
+    createPlaceholderPreviewRow('Card Heading', selectedChoice?.card?.heading, storySettings),
+    createPlaceholderPreviewRow('Card Body', selectedChoice?.card?.body, storySettings),
+    createPlaceholderPreviewRow('Card Rule', selectedChoice?.card?.rule, storySettings),
     ...selectedResponseInputs.flatMap((input, inputIndex) => [
       createPlaceholderPreviewRow(
         `Response ${inputIndex + 1} Label`,
         input?.label,
-        tweaks,
+        storySettings,
       ),
       createPlaceholderPreviewRow(
         `Response ${inputIndex + 1} Placeholder`,
         input?.placeholder,
-        tweaks,
+        storySettings,
       ),
       createPlaceholderPreviewRow(
         `Response ${inputIndex + 1} Help`,
         input?.helpText,
-        tweaks,
+        storySettings,
       ),
       ...(Array.isArray(input?.options)
         ? input.options.map((option, optionIndex) =>
             createPlaceholderPreviewRow(
               `Response ${inputIndex + 1} Option ${optionIndex + 1}`,
               option,
-              tweaks,
+              storySettings,
             ),
           )
         : []),
@@ -1112,7 +1111,7 @@ function AdminApp() {
     const nextDraft = createDefaultAdminDraft(defaultContent, defaultFlowMap);
     setDraft(nextDraft);
     setSavedFingerprint(createDraftFingerprint(nextDraft));
-    setAiIntensity(nextDraft.tweaks.intensity);
+    setAiIntensity(DEFAULT_AI_INTENSITY);
     setNotice({ tone: 'warning', text: 'Draft reset to package defaults. Legacy local cache was cleared.' });
     setSnapshotName('');
     setActiveDayIndex(0);
@@ -1224,10 +1223,8 @@ function AdminApp() {
         ...current,
         content: imported.content,
         flowMap: imported.flowMap,
-        tweaks: imported.tweaks,
         sourceLabel: file.name,
       }));
-      setAiIntensity(imported.tweaks.intensity);
       setActiveDayIndex(0);
       setActiveEnvelopeIndex(0);
       setActiveChoiceIndex(0);
@@ -1312,27 +1309,20 @@ function AdminApp() {
     });
   };
 
-  const updateTweaks = (updates) => {
-    if (Object.hasOwn(updates, 'intensity')) {
-      setAiIntensity(Number(updates.intensity) || TWEAK_DEFAULTS.intensity);
-    }
-    setDraft((current) => ({
-      ...current,
-      tweaks: normalizeAdminTweaks({
-        ...current.tweaks,
+  const updateStorySettings = (updates) => {
+    updateContent((nextContent) => {
+      nextContent.settings = normalizeStorySettings({
+        ...nextContent.settings,
         ...updates,
-      }),
-    }));
+      });
+    });
   };
 
-  const handleResetTweaks = () => {
-    const nextTweaks = createDefaultAdminTweaks();
-    setDraft((current) => ({
-      ...current,
-      tweaks: nextTweaks,
-    }));
-    setAiIntensity(nextTweaks.intensity);
-    setNotice({ tone: 'warning', text: 'Settings reset to package defaults. Save the draft to persist them.' });
+  const handleResetStorySettings = () => {
+    updateContent((nextContent) => {
+      nextContent.settings = normalizeStorySettings(STORY_SETTINGS_DEFAULTS);
+    });
+    setNotice({ tone: 'warning', text: 'Story settings reset to package defaults.' });
   };
 
   const updatePrologue = (updates) => {
@@ -2107,15 +2097,11 @@ function AdminApp() {
             <div className="metric-grid" aria-label="Settings summary">
               <div>
                 <span>Her Name</span>
-                <strong>{tweaks.herName || TWEAK_DEFAULTS.herName}</strong>
+                <strong>{storySettings.herName || STORY_SETTINGS_DEFAULTS.herName}</strong>
               </div>
               <div>
                 <span>His Name</span>
-                <strong>{tweaks.hisName || TWEAK_DEFAULTS.hisName}</strong>
-              </div>
-              <div>
-                <span>Intensity</span>
-                <strong>{tweaks.intensity}/10</strong>
+                <strong>{storySettings.hisName || STORY_SETTINGS_DEFAULTS.hisName}</strong>
               </div>
               <div>
                 <span>Sync</span>
@@ -2125,8 +2111,8 @@ function AdminApp() {
 
             <section className="data-panel" aria-labelledby="settings-editor-heading">
               <div className="panel-heading">
-                <h3 id="settings-editor-heading">Tweak Settings</h3>
-                <span>{supabase ? 'Saved with the draft' : 'Local session only'}</span>
+                <h3 id="settings-editor-heading">Story Settings</h3>
+                <span>{supabase ? 'Saved with the story draft' : 'Local session only'}</span>
               </div>
               <div className="settings-workbench">
                 <div className="field-stack">
@@ -2134,34 +2120,27 @@ function AdminApp() {
                     <label className="field-block">
                       <span>Her Name</span>
                       <input
-                        value={tweaks.herName}
-                        onChange={(event) => updateTweaks({ herName: event.target.value })}
+                        value={storySettings.herName}
+                        onChange={(event) => updateStorySettings({ herName: event.target.value })}
                       />
                     </label>
                     <label className="field-block">
                       <span>His Name</span>
                       <input
-                        value={tweaks.hisName}
-                        onChange={(event) => updateTweaks({ hisName: event.target.value })}
+                        value={storySettings.hisName}
+                        onChange={(event) => updateStorySettings({ hisName: event.target.value })}
                       />
                     </label>
                   </div>
-                  <label className="field-block">
-                    <span>Intensity: {tweaks.intensity}/10</span>
-                    <input
-                      type="range"
-                      min="1"
-                      max="10"
-                      value={tweaks.intensity}
-                      onChange={(event) => updateTweaks({ intensity: Number(event.target.value) })}
-                    />
-                  </label>
-                  <div className="button-row" aria-label="Settings actions">
+                  <p className="field-note">
+                    Placeholder tokens like <code>{'{{herName}}'}</code> and <code>{'{{hisName}}'}</code> use these story settings.
+                  </p>
+                  <div className="button-row" aria-label="Story settings actions">
                     <button className="control-button primary" type="button" onClick={handleSaveDraft}>
                       Save Draft
                     </button>
-                    <button className="control-button danger" type="button" onClick={handleResetTweaks}>
-                      Reset Settings
+                    <button className="control-button danger" type="button" onClick={handleResetStorySettings}>
+                      Reset Story Settings
                     </button>
                   </div>
                   {notice ? <p className={`notice ${notice.tone}`}>{notice.text}</p> : null}
@@ -2171,15 +2150,11 @@ function AdminApp() {
                   <div className="settings-preview-panel">
                     <div>
                       <span>Addressed To</span>
-                      <strong>{replacePlaceholders('{{HerName}}', tweaks)}</strong>
+                      <strong>{replacePlaceholders('{{HerName}}', storySettings)}</strong>
                     </div>
                     <div>
                       <span>Signed</span>
-                      <strong>{replacePlaceholders('{{hisName}}', tweaks)}</strong>
-                    </div>
-                    <div>
-                      <span>Intensity</span>
-                      <strong>{tweaks.intensity}/10</strong>
+                      <strong>{replacePlaceholders('{{hisName}}', storySettings)}</strong>
                     </div>
                   </div>
                 </div>
@@ -3293,22 +3268,13 @@ function AdminApp() {
                 <span>{placeholderPreviewRows.length} active fields</span>
               </div>
               <div className="placeholder-preview-workbench">
-                <div className="split-fields">
-                  <label className="field-block">
-                    <span>Her Name</span>
-                    <input
-                      value={tweaks.herName}
-                      onChange={(event) => updateTweaks({ herName: event.target.value })}
-                    />
-                  </label>
-                  <label className="field-block">
-                    <span>His Name</span>
-                    <input
-                      value={tweaks.hisName}
-                      onChange={(event) => updateTweaks({ hisName: event.target.value })}
-                    />
-                  </label>
-                </div>
+                <p className="field-note">
+                  Using story settings:
+                  {' '}
+                  <strong>{storySettings.herName || STORY_SETTINGS_DEFAULTS.herName}</strong>
+                  {' / '}
+                  <strong>{storySettings.hisName || STORY_SETTINGS_DEFAULTS.hisName}</strong>
+                </p>
                 <div className="token-chip-list" aria-label="Supported placeholder tokens">
                   {PLACEHOLDER_TOKEN_OPTIONS.map((option) => (
                     <span key={option.token} title={option.label}>

@@ -5,7 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  TWEAK_DEFAULTS,
+  DEFAULT_AI_INTENSITY,
   normalizeContentModel,
   validateStoryExport,
 } from '@wifey/story-core';
@@ -63,24 +63,8 @@ function corsHeaders() {
 
 function normalizeIntensity(value) {
   const intensity = Number(value);
-  if (!Number.isFinite(intensity)) return TWEAK_DEFAULTS.intensity;
+  if (!Number.isFinite(intensity)) return DEFAULT_AI_INTENSITY;
   return Math.min(10, Math.max(1, Math.round(intensity)));
-}
-
-function normalizeTweaks(tweaks = {}) {
-  const source = tweaks && typeof tweaks === 'object' ? tweaks : {};
-
-  return {
-    herName:
-      Object.hasOwn(source, 'herName') && source.herName != null
-        ? String(source.herName)
-        : TWEAK_DEFAULTS.herName,
-    hisName:
-      Object.hasOwn(source, 'hisName') && source.hisName != null
-        ? String(source.hisName)
-        : TWEAK_DEFAULTS.hisName,
-    intensity: normalizeIntensity(source.intensity),
-  };
 }
 
 function sendJson(res, statusCode, payload) {

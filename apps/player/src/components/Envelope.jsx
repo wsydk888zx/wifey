@@ -2,8 +2,8 @@ import React from 'react';
 
 import { replacePlaceholders } from '@wifey/story-core';
 
-function Envelope({ envelope, addressee, tweaks, state, onOpen }) {
-  const rp = (text) => replacePlaceholders(text, tweaks);
+function Envelope({ envelope, addressee, storySettings, state, onOpen }) {
+  const rp = (text) => replacePlaceholders(text, storySettings);
 
   const handleClick = () => {
     if (state !== 'resting') return;

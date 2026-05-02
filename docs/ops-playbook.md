@@ -159,8 +159,8 @@ grep "^export" apps/admin/src/supabaseStorage.js
 # List every import App.jsx takes from supabaseStorage.js
 grep -A 30 "from './supabaseStorage.js'" apps/admin/src/App.jsx
 ```
-Cross-check: every name in the App.jsx import block must appear in the export list. As of 2026-05-01, the full export list is:
-`MAX_ADMIN_SNAPSHOTS`, `normalizeAdminTweaks`, `createDefaultAdminTweaks`, `createDefaultAdminDraft`, `loadAdminDraft`, `saveAdminDraft`, `publishStory`, `getStoryVersions`, `rollbackToVersion`, `createAdminSnapshot`, `downloadAdminExport`, `parseAdminImport`, `createAdminExport`, `createAdminPreviewPayload`, `subscribeToPlayerState`, `loadPublishedStory`, `clearAdminDraftStorage`, `createDraftFingerprint`.
+Cross-check: every name in the App.jsx import block must appear in the export list. As of 2026-05-02, the full export list is:
+`MAX_ADMIN_SNAPSHOTS`, `createDefaultAdminDraft`, `loadAdminDraft`, `saveAdminDraft`, `publishStory`, `getStoryVersions`, `rollbackToVersion`, `createAdminSnapshot`, `downloadAdminExport`, `parseAdminImport`, `createAdminExport`, `createAdminPreviewPayload`, `subscribeToPlayerState`, `loadPublishedStory`, `clearAdminDraftStorage`, `createDraftFingerprint`.
 
 The Vite build will also catch any missing exports as a hard error — so `npm run build --workspace @wifey/admin` is the definitive check.
 

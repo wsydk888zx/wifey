@@ -1,11 +1,13 @@
 import {
   STORAGE_KEYS,
-  TWEAK_DEFAULTS,
   normalizeContentModel,
+  normalizeStorySettings,
+  STORY_SETTINGS_DEFAULTS,
   validateStoryExport,
 } from '@wifey/story-core';
 
 export const MAX_ADMIN_SNAPSHOTS = 10;
+const LEGACY_TWEAKS_STORAGE_KEY = 'yoursWatching:tweaks:v1';
 
 function deepClone(value) {
   if (value === undefined) return undefined;
@@ -43,28 +45,13 @@ function normalizeFlowMap(flowMap) {
   return { rules: [] };
 }
 
-function normalizeIntensity(value) {
-  const intensity = Number(value);
-  if (!Number.isFinite(intensity)) return TWEAK_DEFAULTS.intensity;
-  return Math.min(10, Math.max(1, Math.round(intensity)));
-}
-
-export function normalizeAdminTweaks(tweaks = {}) {
-  const source = tweaks && typeof tweaks === 'object' ? tweaks : {};
-
-  return {
-    herName: Object.hasOwn(source, 'herName')
-      ? String(source.herName ?? '')
-      : TWEAK_DEFAULTS.herName,
-    hisName: Object.hasOwn(source, 'hisName')
-      ? String(source.hisName ?? '')
-      : TWEAK_DEFAULTS.hisName,
-    intensity: normalizeIntensity(source.intensity),
-  };
-}
-
-export function createDefaultAdminTweaks() {
-  return normalizeAdminTweaks(TWEAK_DEFAULTS);
+function withStorySettings(contentSource, storySettingsSource) {
+  const content = normalizeContentModel(contentSource);
+  content.settings = normalizeStorySettings(
+    storySettingsSource ?? content.settings ?? content.storySettings ?? STORY_SETTINGS_DEFAULTS,
+  );
+  delete content.storySettings;
+  return content;
 }
 
 function normalizeSnapshots(snapshots) {
@@ -84,10 +71,9 @@ function normalizeSnapshots(snapshots) {
 
 export function createDefaultAdminDraft(defaultContent, defaultFlowMap) {
   return {
-    content: normalizeContentModel(defaultContent),
+    content: withStorySettings(defaultContent),
     flowMap: normalizeFlowMap(defaultFlowMap),
     snapshots: [],
-    tweaks: createDefaultAdminTweaks(),
     sourceLabel: 'Package defaults',
   };
 }
@@ -97,55 +83,54 @@ export function loadAdminDraft(defaultContent, defaultFlowMap) {
   const storedContent = readJsonValue(STORAGE_KEYS.content);
   const storedFlowMap = readJsonValue(STORAGE_KEYS.flow);
   const storedSnapshots = readJsonValue(STORAGE_KEYS.snapshots);
-  const storedTweaks = readJsonValue(STORAGE_KEYS.tweaks);
+  const storedLegacyTweaks = readJsonValue(LEGACY_TWEAKS_STORAGE_KEY);
+
+  const content = storedContent.found
+    ? withStorySettings(storedContent.value, storedLegacyTweaks.found ? storedLegacyTweaks.value : undefined)
+    : fallback.content;
 
   return {
-    content: storedContent.found ? normalizeContentModel(storedContent.value) : fallback.content,
+    content,
     flowMap: storedFlowMap.found ? normalizeFlowMap(storedFlowMap.value) : fallback.flowMap,
     snapshots: storedSnapshots.found ? normalizeSnapshots(storedSnapshots.value) : [],
-    tweaks: storedTweaks.found ? normalizeAdminTweaks(storedTweaks.value) : fallback.tweaks,
     sourceLabel:
-      storedContent.found || storedFlowMap.found || storedSnapshots.found || storedTweaks.found
+      storedContent.found || storedFlowMap.found || storedSnapshots.found || storedLegacyTweaks.found
         ? 'Browser draft'
         : fallback.sourceLabel,
   };
 }
 
 export function saveAdminDraft(draft) {
-  writeJsonValue(STORAGE_KEYS.content, normalizeContentModel(draft.content));
+  writeJsonValue(STORAGE_KEYS.content, withStorySettings(draft.content));
   writeJsonValue(STORAGE_KEYS.flow, normalizeFlowMap(draft.flowMap));
   writeJsonValue(STORAGE_KEYS.snapshots, normalizeSnapshots(draft.snapshots));
-  writeJsonValue(STORAGE_KEYS.tweaks, normalizeAdminTweaks(draft.tweaks));
 }
 
 export function clearAdminDraftStorage() {
   removeValue(STORAGE_KEYS.content);
   removeValue(STORAGE_KEYS.flow);
   removeValue(STORAGE_KEYS.snapshots);
-  removeValue(STORAGE_KEYS.tweaks);
+  removeValue(LEGACY_TWEAKS_STORAGE_KEY);
 }
 
 export function createDraftFingerprint(draft) {
   return JSON.stringify({
-    content: normalizeContentModel(draft.content),
+    content: withStorySettings(draft.content),
     flowMap: normalizeFlowMap(draft.flowMap),
     snapshots: normalizeSnapshots(draft.snapshots),
-    tweaks: normalizeAdminTweaks(draft.tweaks),
   });
 }
 
 export function createAdminExport(draft) {
   return {
-    content: normalizeContentModel(draft.content),
+    content: withStorySettings(draft.content),
     flowMap: normalizeFlowMap(draft.flowMap),
-    tweaks: normalizeAdminTweaks(draft.tweaks),
   };
 }
 
 export function createAdminPreviewPayload(draft) {
   return {
     ...createAdminExport(draft),
-    tweaks: normalizeAdminTweaks(draft.tweaks),
     sourceLabel: draft.sourceLabel || 'Browser draft',
   };
 }
@@ -156,13 +141,15 @@ export function parseAdminImport(source, fallbackFlowMap) {
   const flowMap = normalizeFlowMap(
     source?.flowMap || contentSource?.defaultFlowMap || fallbackFlowMap,
   );
-  const content = normalizeContentModel(contentSource);
+  const content = withStorySettings(
+    contentSource,
+    source?.storySettings || source?.settings || contentSource?.storySettings || contentSource?.settings,
+  );
   const validation = validateStoryExport({ content, flowMap });
 
   return {
     content,
     flowMap,
-    tweaks: normalizeAdminTweaks(source?.tweaks || contentSource?.defaultTweaks || contentSource?.tweaks),
     validation,
   };
 }

@@ -29,18 +29,19 @@ The biggest risks are:
 - Move shared behavior into `packages/story-core` before using it in multiple apps.
 - Keep the root player preview working until the workspace player is accepted as the only runtime path.
 
-## Current Hotfix: Admin Tweak Persistence
+## Current Hotfix: Story Settings Persistence
 
 Status: complete.
 
-Goal: restore persistence for workspace admin `tweaks` so names and intensity survive draft save/load, export/import, publish, and player fetch.
+Goal: make names part of story settings instead of a separate tweak layer, and keep those settings stable through draft save/load, export/import, publish, and player fetch.
 
 Done:
 
-- Traced the loss of `tweaks` to the Supabase-backed admin adapter, which was not persisting them on save or restoring them on load.
-- Restored `tweaks` persistence by storing them alongside `flow_map`, keeping the editable flow-map shape clean while avoiding a password-gated schema migration.
-- Added `tweaks` to admin export/import so backup JSON keeps names and intensity.
-- Updated the player loader to read published `tweaks` and use the authored flow map from Supabase.
+- Traced the lost name settings to the Supabase-backed admin adapter, which was not treating them as story data.
+- Moved names into `content.settings` so the story itself owns them.
+- Kept a backward-compatible read path from published `flow_map` metadata while removing the active tweak layer from admin/player.
+- Updated admin export/import so story settings travel with the story content.
+- Updated the player loader to read published story settings and use the authored flow map from Supabase.
 - Verified the admin and player production builds before the hosted rollout.
 
 ## Phase 0: Baseline And Safety Net
@@ -270,7 +271,7 @@ Done:
 - Created `docs/legacy-admin-parity-checklist.md` with the parity matrix, root preview smoke checklist, and remaining workspace parity gaps.
 - Identified that the workspace admin covers the main authoring loop but should not replace the legacy admin yet.
 - De-scoped real-text messaging from the target product plan; it should be removed rather than migrated.
-- Added workspace admin Settings storage and UI for non-messaging `tweaks`: her name, his name, and intensity.
+- Added workspace admin Story Settings storage and UI for placeholder names.
 - Kept `npm run verify` passing after the settings slice.
 - Added workspace admin Story structure controls for ids, add/remove actions, and envelope reordering; new days are capped at the five canonical days supported by shared content normalization.
 - Removed de-scoped real-text messaging behavior from the legacy root runtime, workspace player runtime, legacy admin authoring UI, settings, prompt queue surfaces, styles, and Capacitor notification dependency wiring.

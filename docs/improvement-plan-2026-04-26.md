@@ -152,7 +152,7 @@ The player currently has three content-loading paths: bundled default content, a
 
 - `defaultContent` import from `@wifey/story-content` — this is the one source of truth
 - `readFlowMap(content, flowMap)` can be simplified: just call `buildCompleteFlowMap(content, content.defaultFlowMap || { rules: [] })`
-- All player game state, history, tweaks — unchanged
+- All player game state and history — unchanged
 
 ### CSS to remove in `apps/player/src/styles.css`
 

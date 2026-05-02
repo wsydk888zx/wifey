@@ -6,7 +6,7 @@ function TaskCard({
   card,
   envelope,
   addressee,
-  tweaks,
+  storySettings,
   onComplete,
   completed,
   onReselect,
@@ -14,7 +14,7 @@ function TaskCard({
   responses = {},
   onResponseChange,
 }) {
-  const rp = (text) => replacePlaceholders(text, tweaks);
+  const rp = (text) => replacePlaceholders(text, storySettings);
   const [now] = useState(() => {
     const date = new Date();
     return date.toLocaleString('en-US', {
@@ -37,7 +37,7 @@ function TaskCard({
     .map((paragraph) => paragraph.trim())
     .filter(Boolean);
   const initial = (addressee || 'M').trim().charAt(0).toUpperCase() || 'M';
-  const signoffName = rp(tweaks.hisName || 'M');
+  const signoffName = rp(storySettings.hisName || 'M');
 
   const renderParagraph = (paragraph) => {
     const lines = paragraph.split('\n');

@@ -80,8 +80,9 @@ test('placeholder preview helpers expose supported token coverage', () => {
   assert.equal(previewPlaceholders('No tokens here.'), null);
 });
 
-test('shared storage keys include admin tweak storage', () => {
-  assert.equal(STORAGE_KEYS.tweaks, 'yoursWatching:tweaks:v1');
+test('shared storage keys include content and flow storage', () => {
+  assert.equal(STORAGE_KEYS.content, 'yoursWatching:contentEdits:v2');
+  assert.equal(STORAGE_KEYS.flow, 'yoursWatching:flowMap:v2');
 });
 
 test('normalizeContentModel converts legacy slots and folds overflow days into day five', () => {

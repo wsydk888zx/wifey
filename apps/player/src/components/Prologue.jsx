@@ -7,10 +7,10 @@ const FALLBACK_PROLOGUE = {
   signoff: '- Yours, watching',
 };
 
-function Prologue({ prologue, addressee, tweaks, onBegin, dayCount, envelopeCount }) {
+function Prologue({ prologue, addressee, storySettings, onBegin, dayCount, envelopeCount }) {
   const content =
     prologue && Array.isArray(prologue.lines) ? prologue : FALLBACK_PROLOGUE;
-  const rp = (text) => replacePlaceholders(text, tweaks);
+  const rp = (text) => replacePlaceholders(text, storySettings);
 
   return (
     <div className="prologue">
