@@ -4,8 +4,8 @@
   "description": "A story for you.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f5f0e8",
-  "theme_color": "#c9a961",
+  "background_color": "#14080c",
+  "theme_color": "#1b0d12",
   "orientation": "portrait",
   "icons": [
     {

@@ -193,6 +193,7 @@ function createDefaultChoice(content, envelope, choices) {
       body: 'Draft the card body here.',
       rule: 'Add the completion rule here.',
       inputs: [],
+      revealItems: [],
     },
   };
 }
@@ -314,6 +315,31 @@ function createDefaultResponseInput(choice, inputs) {
     placeholder: '',
     helpText: '',
     options: ['Option 1', 'Option 2'],
+  };
+}
+
+function createRevealItemId(choice, revealItems) {
+  const base = String(choice?.id || 'reveal')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || 'reveal';
+  const usedIds = new Set(revealItems.map((item) => item?.id).filter(Boolean));
+  let index = revealItems.length + 1;
+  let id = `${base}_reveal_${index}`;
+
+  while (usedIds.has(id)) {
+    index += 1;
+    id = `${base}_reveal_${index}`;
+  }
+
+  return id;
+}
+
+function createDefaultRevealItem(choice, revealItems) {
+  return {
+    id: createRevealItemId(choice, revealItems),
+    title: 'Reveal item title',
+    description: '',
   };
 }
 
@@ -724,6 +750,9 @@ function AdminApp() {
   const selectedResponseInputs = Array.isArray(selectedChoice?.card?.inputs)
     ? selectedChoice.card.inputs
     : [];
+  const selectedRevealItems = Array.isArray(selectedChoice?.card?.revealItems)
+    ? selectedChoice.card.revealItems
+    : [];
   const previewCopy = (value, fallback = '') =>
     replacePlaceholders(value || fallback, storySettings);
   const placeholderPreviewRows = [
@@ -746,6 +775,18 @@ function AdminApp() {
     createPlaceholderPreviewRow('Card Heading', selectedChoice?.card?.heading, storySettings),
     createPlaceholderPreviewRow('Card Body', selectedChoice?.card?.body, storySettings),
     createPlaceholderPreviewRow('Card Rule', selectedChoice?.card?.rule, storySettings),
+    ...selectedRevealItems.flatMap((item, itemIndex) => [
+      createPlaceholderPreviewRow(
+        `Reveal ${itemIndex + 1} Title`,
+        item?.title,
+        storySettings,
+      ),
+      createPlaceholderPreviewRow(
+        `Reveal ${itemIndex + 1} Description`,
+        item?.description,
+        storySettings,
+      ),
+    ]),
     ...selectedResponseInputs.flatMap((input, inputIndex) => [
       createPlaceholderPreviewRow(
         `Response ${inputIndex + 1} Label`,
@@ -1674,6 +1715,17 @@ function AdminApp() {
     });
   };
 
+  const getChoiceRevealItems = (dayIndex, envelopeIndex, choiceIndex) => {
+    const choice = getChoiceAt(dayIndex, envelopeIndex, choiceIndex);
+    return Array.isArray(choice?.card?.revealItems) ? choice.card.revealItems : [];
+  };
+
+  const updateChoiceRevealItems = (dayIndex, envelopeIndex, choiceIndex, revealItems) => {
+    updateChoice(dayIndex, envelopeIndex, choiceIndex, {
+      card: { revealItems },
+    });
+  };
+
   const addResponseInput = (dayIndex, envelopeIndex, choiceIndex) => {
     const choice = getChoiceAt(dayIndex, envelopeIndex, choiceIndex);
     if (!choice) return;
@@ -1741,6 +1793,45 @@ function AdminApp() {
         ),
       );
     }
+  };
+
+  const addRevealItem = (dayIndex, envelopeIndex, choiceIndex) => {
+    const choice = getChoiceAt(dayIndex, envelopeIndex, choiceIndex);
+    if (!choice) return;
+
+    const revealItems = getChoiceRevealItems(dayIndex, envelopeIndex, choiceIndex).map(cloneValue);
+    updateChoiceRevealItems(dayIndex, envelopeIndex, choiceIndex, [
+      ...revealItems,
+      createDefaultRevealItem(choice, revealItems),
+    ]);
+  };
+
+  const updateRevealItem = (
+    dayIndex,
+    envelopeIndex,
+    choiceIndex,
+    revealItemIndex,
+    updates,
+  ) => {
+    const revealItems = getChoiceRevealItems(dayIndex, envelopeIndex, choiceIndex).map(cloneValue);
+    const currentItem = revealItems[revealItemIndex];
+    if (!currentItem) return;
+
+    revealItems[revealItemIndex] = {
+      ...currentItem,
+      ...updates,
+    };
+    updateChoiceRevealItems(dayIndex, envelopeIndex, choiceIndex, revealItems);
+  };
+
+  const removeRevealItem = (dayIndex, envelopeIndex, choiceIndex, revealItemIndex) => {
+    const revealItems = getChoiceRevealItems(dayIndex, envelopeIndex, choiceIndex).map(cloneValue);
+    updateChoiceRevealItems(
+      dayIndex,
+      envelopeIndex,
+      choiceIndex,
+      revealItems.filter((_, index) => index !== revealItemIndex),
+    );
   };
 
   const updateFlowRules = (rules) => {
@@ -3806,6 +3897,108 @@ function AdminApp() {
                                     }
                                   />
                                 </label>
+                                <div className="response-fields-panel" aria-label="Reveal item editor">
+                                  <div className="editor-section-title">
+                                    <h4>Final Reveal Items</h4>
+                                    <span>{selectedRevealItems.length} defined</span>
+                                  </div>
+                                  <div className="button-row">
+                                    <button
+                                      className="control-button"
+                                      type="button"
+                                      onClick={() =>
+                                        addRevealItem(
+                                          safeDayIndex,
+                                          safeEnvelopeIndex,
+                                          safeChoiceIndex,
+                                        )
+                                      }
+                                    >
+                                      Add Reveal Item
+                                    </button>
+                                  </div>
+                                  {selectedRevealItems.length ? (
+                                    <div className="response-field-list">
+                                      {selectedRevealItems.map((item, itemIndex) => (
+                                        <div
+                                          className="response-field-card"
+                                          key={item.id || `reveal-item-${itemIndex + 1}`}
+                                        >
+                                          <div className="response-field-header">
+                                            <div>
+                                              <strong>{item.title || `Reveal Item ${itemIndex + 1}`}</strong>
+                                              <span>{item.id || `reveal-item-${itemIndex + 1}`}</span>
+                                            </div>
+                                            <button
+                                              className="control-button danger"
+                                              type="button"
+                                              onClick={() =>
+                                                removeRevealItem(
+                                                  safeDayIndex,
+                                                  safeEnvelopeIndex,
+                                                  safeChoiceIndex,
+                                                  itemIndex,
+                                                )
+                                              }
+                                            >
+                                              Remove
+                                            </button>
+                                          </div>
+                                          <label className="field-block">
+                                            <span>Reveal Item ID</span>
+                                            <input
+                                              value={item.id || ''}
+                                              onChange={(event) =>
+                                                updateRevealItem(
+                                                  safeDayIndex,
+                                                  safeEnvelopeIndex,
+                                                  safeChoiceIndex,
+                                                  itemIndex,
+                                                  { id: event.target.value },
+                                                )
+                                              }
+                                            />
+                                          </label>
+                                          <label className="field-block">
+                                            <span>Reveal Title</span>
+                                            <input
+                                              value={item.title || ''}
+                                              onChange={(event) =>
+                                                updateRevealItem(
+                                                  safeDayIndex,
+                                                  safeEnvelopeIndex,
+                                                  safeChoiceIndex,
+                                                  itemIndex,
+                                                  { title: event.target.value },
+                                                )
+                                              }
+                                            />
+                                          </label>
+                                          <label className="field-block">
+                                            <span>Reveal Description</span>
+                                            <textarea
+                                              value={item.description || ''}
+                                              rows={3}
+                                              onChange={(event) =>
+                                                updateRevealItem(
+                                                  safeDayIndex,
+                                                  safeEnvelopeIndex,
+                                                  safeChoiceIndex,
+                                                  itemIndex,
+                                                  { description: event.target.value },
+                                                )
+                                              }
+                                            />
+                                          </label>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="empty-state">
+                                      No reveal items yet. Add them to show a final authored reveal in the player.
+                                    </p>
+                                  )}
+                                </div>
                                 <div className="response-fields-panel" aria-label="Response input editor">
                                   <div className="editor-section-title">
                                     <h4>Response Fields</h4>
@@ -4000,6 +4193,27 @@ function AdminApp() {
                                   {selectedChoice.card?.rule ? (
                                     <blockquote>{previewCopy(selectedChoice.card.rule)}</blockquote>
                                   ) : null}
+                                </div>
+                                <span>Final Reveal</span>
+                                <div className="response-preview">
+                                  {selectedRevealItems.length ? (
+                                    selectedRevealItems.map((item, itemIndex) => (
+                                      <div
+                                        className="response-preview-field"
+                                        key={item.id || `reveal-preview-${itemIndex}`}
+                                      >
+                                        <div>
+                                          <strong>
+                                            {previewCopy(item.title, `Reveal item ${itemIndex + 1}`)}
+                                          </strong>
+                                          <span>{item.id || `reveal-item-${itemIndex + 1}`}</span>
+                                        </div>
+                                        {item.description ? <p>{previewCopy(item.description)}</p> : null}
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="empty-preview">No reveal items.</p>
+                                  )}
                                 </div>
                                 <span>Response Fields</span>
                                 <div className="response-preview">

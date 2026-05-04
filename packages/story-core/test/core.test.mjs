@@ -20,7 +20,7 @@ import {
   getEnvelopeNotificationSchedule,
 } from '../src/index.js';
 
-function makeTestChoice(id, inputs = []) {
+function makeTestChoice(id, inputs = [], revealItems = []) {
   return {
     id,
     title: id,
@@ -29,6 +29,7 @@ function makeTestChoice(id, inputs = []) {
       body: `${id} body`,
       rule: `${id} rule`,
       inputs,
+      revealItems,
     },
   };
 }
@@ -133,6 +134,42 @@ test('normalizeContentModel preserves mixed legacy slots and envelope arrays', (
     getDayEnvelopes(normalized.days[0]).map((envelope) => envelope.id),
     ['day-prologue', 'day-morning', 'day-evening'],
   );
+});
+
+test('normalizeContentModel normalizes reveal items on choice cards', () => {
+  const normalized = normalizeContentModel({
+    days: [
+      {
+        envelopes: [
+          {
+            id: 'env-a',
+            choices: [
+              {
+                id: 'choice-a',
+                title: 'A',
+                card: {
+                  heading: 'Heading',
+                  body: 'Body',
+                  rule: 'Rule',
+                  revealItems: [
+                    'Silk ties',
+                    { title: 'Aftercare', description: 'Warm bath and lotion' },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  });
+
+  const revealItems = normalized.days[0].envelopes[0].choices[0].card.revealItems;
+
+  assert.deepEqual(revealItems, [
+    { id: 'reveal-item-1', title: 'Silk ties', description: '' },
+    { id: 'reveal-item-2', title: 'Aftercare', description: 'Warm bath and lotion' },
+  ]);
 });
 
 test('flattenStoryEnvelopes returns stable player routing metadata', () => {
@@ -259,6 +296,28 @@ test('matchesFlowRule handles conditional operators', () => {
     matchesFlowRule({ operator: 'contains', sourceFieldId: 'tags', value: 'light' }, responses),
     true,
   );
+});
+
+test('validateStoryContent accepts valid reveal items', () => {
+  const result = validateStoryContent({
+    prologue: { lines: ['Begin.'] },
+    days: [
+      {
+        envelopes: [
+          {
+            id: 'env-a',
+            choices: [
+              makeTestChoice('choice-a', [], [
+                { id: 'reveal-1', title: 'Blindfold', description: 'Black silk.' },
+              ]),
+            ],
+          },
+        ],
+      },
+    ],
+  }, { rules: [] });
+
+  assert.deepEqual(result.errors, []);
 });
 
 test('getFlowOperatorLabel exposes editor labels for supported operators', () => {

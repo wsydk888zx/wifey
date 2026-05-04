@@ -1,35 +1,106 @@
 <!DOCTYPE html>
-<!-- Open this file in a browser, right-click each canvas and "Save image as"
-     to export icon-192.png and icon-512.png into this folder, then delete this file. -->
+<!-- Open this file in a browser if you want a visual source for the player app icon.
+     The committed PNG assets are generated separately, but this sketch mirrors the current treatment. -->
 <html>
-<body style="background:#111;display:flex;gap:24px;padding:24px;align-items:flex-start">
+<body style="background:#12070d;display:flex;gap:24px;padding:24px;align-items:flex-start;flex-wrap:wrap">
 <script>
+function roundedRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + width, y, x + width, y + height, radius);
+  ctx.arcTo(x + width, y + height, x, y + height, radius);
+  ctx.arcTo(x, y + height, x, y, radius);
+  ctx.arcTo(x, y, x + width, y, radius);
+  ctx.closePath();
+}
+
 function makeIcon(size) {
   const c = document.createElement('canvas');
   c.width = size; c.height = size;
   c.title = `icon-${size}.png`;
   const ctx = c.getContext('2d');
-  // background
-  ctx.fillStyle = '#f5f0e8';
+
+  const bg = ctx.createRadialGradient(size * 0.5, size * 0.42, size * 0.08, size * 0.5, size * 0.5, size * 0.74);
+  bg.addColorStop(0, '#3a1220');
+  bg.addColorStop(1, '#15080e');
+  ctx.fillStyle = bg;
   ctx.fillRect(0, 0, size, size);
-  // brass circle
+
+  ctx.strokeStyle = '#d2ae62';
+  ctx.lineWidth = Math.max(2, size * 0.012);
+  roundedRect(ctx, size * 0.06, size * 0.06, size * 0.88, size * 0.88, size * 0.22);
+  ctx.stroke();
+
+  const glow = ctx.createRadialGradient(size * 0.5, size * 0.42, size * 0.02, size * 0.5, size * 0.42, size * 0.26);
+  glow.addColorStop(0, 'rgba(246,198,130,0.34)');
+  glow.addColorStop(1, 'rgba(246,198,130,0)');
+  ctx.fillStyle = glow;
   ctx.beginPath();
-  ctx.arc(size/2, size/2, size*0.42, 0, Math.PI*2);
-  ctx.fillStyle = '#c9a961';
+  ctx.arc(size * 0.5, size * 0.46, size * 0.28, 0, Math.PI * 2);
   ctx.fill();
-  // wax seal inner
+
+  ctx.fillStyle = '#f3e5ca';
+  ctx.fillRect(size * 0.23, size * 0.18, size * 0.54, size * 0.6);
+  ctx.fillStyle = '#d7c09a';
   ctx.beginPath();
-  ctx.arc(size/2, size/2, size*0.28, 0, Math.PI*2);
-  ctx.fillStyle = '#8b1a1a';
+  ctx.moveTo(size * 0.23, size * 0.36);
+  ctx.lineTo(size * 0.5, size * 0.54);
+  ctx.lineTo(size * 0.77, size * 0.36);
+  ctx.lineTo(size * 0.77, size * 0.78);
+  ctx.lineTo(size * 0.23, size * 0.78);
+  ctx.closePath();
   ctx.fill();
-  // Y initial
-  ctx.fillStyle = '#f5f0e8';
-  ctx.font = `bold ${size*0.32}px Georgia,serif`;
+
+  ctx.fillStyle = '#f3e5ca';
+  ctx.beginPath();
+  ctx.moveTo(size * 0.23, size * 0.36);
+  ctx.lineTo(size * 0.5, size * 0.53);
+  ctx.lineTo(size * 0.77, size * 0.36);
+  ctx.lineTo(size * 0.77, size * 0.18);
+  ctx.lineTo(size * 0.23, size * 0.18);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgba(141,103,48,0.8)';
+  ctx.lineWidth = Math.max(1, size * 0.005);
+  ctx.beginPath();
+  ctx.moveTo(size * 0.23, size * 0.36);
+  ctx.lineTo(size * 0.5, size * 0.53);
+  ctx.lineTo(size * 0.77, size * 0.36);
+  ctx.stroke();
+
+  ctx.fillStyle = '#8d1d31';
+  ctx.beginPath();
+  ctx.arc(size * 0.5, size * 0.53, size * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#57101c';
+  ctx.lineWidth = Math.max(2, size * 0.01);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#f7d9c8';
+  ctx.lineWidth = Math.max(2, size * 0.008);
+  ctx.beginPath();
+  ctx.arc(size * 0.5, size * 0.53, size * 0.116, Math.PI * 1.14, Math.PI * 2.08);
+  ctx.stroke();
+
+  ctx.fillStyle = '#f7d9c8';
+  ctx.font = `italic bold ${size * 0.16}px Georgia,serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('Y', size/2, size/2 + size*0.02);
+  ctx.fillText('Y', size * 0.5, size * 0.53);
+
+  ctx.strokeStyle = 'rgba(110,82,58,0.32)';
+  ctx.lineWidth = Math.max(1, size * 0.004);
+  [0.28, 0.34, 0.40].forEach((line) => {
+    ctx.beginPath();
+    ctx.moveTo(size * 0.3, size * line);
+    ctx.lineTo(size * 0.7, size * line);
+    ctx.stroke();
+  });
+
   document.body.appendChild(c);
 }
+makeIcon(180);
 makeIcon(192);
 makeIcon(512);
 </script>

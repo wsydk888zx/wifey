@@ -15,7 +15,7 @@ function Envelope({ envelope, addressee, storySettings, state, onOpen }) {
 
   return (
     <div className="envelope-stage">
-      <div className="envelope-note">sealed for {addressee || 'you'} alone</div>
+      <div className={`envelope-note envelope-note-${state}`}>sealed for {addressee || 'you'} alone</div>
       <div
         className={`envelope ${state}`}
         onClick={handleClick}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-import { normalizeInputType, replacePlaceholders } from '@wifey/story-core';
+import { normalizeInputType, replacePlaceholders, toRoman } from '@wifey/story-core';
 
 function TaskCard({
   card,
@@ -26,6 +26,7 @@ function TaskCard({
     });
   });
   const inputs = Array.isArray(card.inputs) ? card.inputs : [];
+  const revealItems = Array.isArray(card.revealItems) ? card.revealItems : [];
   const missingRequired = inputs.filter((field) => {
     if (!field?.required) return false;
     const value = responses[field.id];
@@ -150,6 +151,25 @@ function TaskCard({
               <div className="rule-note">
                 <span className="label">The rule</span>
                 <div>{rp(card.rule)}</div>
+              </div>
+            ) : null}
+
+            {revealItems.length ? (
+              <div className="reveal-list">
+                <div className="reveal-list-title">What I&apos;ve chosen for tonight</div>
+                <div className="reveal-list-items">
+                  {revealItems.map((item, index) => (
+                    <div className="reveal-item" key={item.id || `reveal-item-${index + 1}`}>
+                      <div className="reveal-item-index">{toRoman(index + 1)}</div>
+                      <div className="reveal-item-body">
+                        <div className="reveal-item-title">{rp(item.title || `Reveal ${index + 1}`)}</div>
+                        {item.description ? (
+                          <div className="reveal-item-description">{rp(item.description)}</div>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : null}
 

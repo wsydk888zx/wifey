@@ -1,14 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { createClient } from '@supabase/supabase-js';
-import { defaultContent } from '@wifey/story-content';
 import { subscribeToPush, getExistingSubscription } from './usePushSubscription.js';
 import {
   STORY_SETTINGS_DEFAULTS,
-  buildCompleteFlowMap,
   getDayEnvelopes,
-  normalizeContentModel,
-  normalizeStorySettings,
   replacePlaceholders,
   toRoman,
 } from '@wifey/story-core';
@@ -16,64 +12,58 @@ import {
 import Envelope from './components/Envelope.jsx';
 import Prologue from './components/Prologue.jsx';
 import TaskCard from './components/TaskCard.jsx';
+import { loadActiveStorySnapshot, subscribeToPublishedStory } from './storySync.js';
 
-const supabase =
-  import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
-    ? createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY)
-    : null;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const PLAYER_SUPABASE_CONFIG_MISSING = !SUPABASE_URL || !SUPABASE_ANON_KEY;
+const supabase = PLAYER_SUPABASE_CONFIG_MISSING
+  ? null
+  : createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+if (PLAYER_SUPABASE_CONFIG_MISSING && typeof console !== 'undefined') {
+  console.error(
+    '[player] Supabase env vars missing at build time. ' +
+    'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set on the player build, ' +
+    'or the app will fall back to bundled story content.',
+  );
+}
 
 // ── Supabase story and state persistence ──────────────────────────────────────
 
-async function fetchPublishedStory() {
-  if (!supabase) return defaultContent;
-
-  try {
-    const { data: stories, error } = await supabase
-      .from('stories')
-      .select('*')
-      .eq('is_published', true)
-      .order('published_at', { ascending: false })
-      .limit(1);
-
-    if (error || !stories || stories.length === 0) {
-      console.warn('Failed to load published story, using default:', error);
-      return defaultContent;
-    }
-
-    const story = stories[0];
-    return {
-      prologue: story.prologue || { lines: [], signoff: '' },
-      days: Array.isArray(story.days) ? story.days : [],
-      flowMap: story.flow_map || { rules: [] },
-      settings: normalizeStorySettings(
-        story.storySettings ||
-        story.settings ||
-        (story.flow_map && typeof story.flow_map === 'object'
-          ? story.flow_map.storySettings ?? story.flow_map.settings ?? story.flow_map.tweaks
-          : undefined),
-      ),
-    };
-  } catch (err) {
-    console.error('Error fetching published story:', err);
-    return defaultContent;
-  }
-}
-
-async function fetchRemoteState() {
+async function fetchRemoteState(storyVersionKey) {
   if (!supabase) return null;
-  const { data } = await supabase
+
+  const { data, error } = await supabase
     .from('player_state')
     .select('state')
     .eq('id', 'main')
     .single();
-  return data?.state ?? null;
+
+  if (error) {
+    console.warn('[player] Could not load saved player state:', error);
+    return null;
+  }
+
+  const state = data?.state;
+  if (!state || typeof state !== 'object') return null;
+  if (state.storyVersionKey !== storyVersionKey) return null;
+  return state;
 }
 
-function saveRemoteState(state) {
+function saveRemoteState(state, storyVersionKey) {
   if (!supabase) return;
+
   supabase
     .from('player_state')
-    .upsert({ id: 'main', state, updated_at: new Date().toISOString() }, { onConflict: 'id' })
+    .upsert(
+      {
+        id: 'main',
+        state: { ...state, storyVersionKey },
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'id' },
+    )
     .then(() => {});
 }
 
@@ -191,12 +181,18 @@ function TextPromptTray({ prompts, setPrompts }) {
   );
 }
 
-function TopBar({ onHistory }) {
+function TopBar({ onHistory, storySettings }) {
+  const addressee = storySettings?.herName?.trim();
+
   return (
     <div className="top-bar">
+      <div className="brand">
+        <div className="title">Yours, Watching</div>
+        <div className="addressee">{addressee ? `for ${addressee}` : 'for you'}</div>
+      </div>
       <div className="top-right">
         {onHistory ? (
-          <button className="top-btn" onClick={onHistory}>Choices</button>
+          <button className="top-btn" onClick={onHistory}>Her Choices</button>
         ) : null}
       </div>
     </div>
@@ -206,9 +202,19 @@ function TopBar({ onHistory }) {
 function ChoiceHistoryPanel({ entries, storySettings, open, onClose }) {
   const rp = (text) => replacePlaceholders(text, storySettings);
   return (
-    <div className={`choice-history-panel ${open ? 'open' : ''}`}>
+    <aside
+      className={`choice-history-panel ${open ? 'open' : ''}`}
+      aria-hidden={!open}
+      aria-label="Choice history"
+    >
       <div className="choice-history-header">
-        <span className="choice-history-title">Her choices</span>
+        <div className="choice-history-heading">
+          <span className="choice-history-kicker">Private record</span>
+          <span className="choice-history-title">Her choices</span>
+          <p className="choice-history-intro">
+            A quiet ledger of the paths she has already taken.
+          </p>
+        </div>
         <button onClick={onClose} aria-label="Close">&#x2715;</button>
       </div>
       <div className="choice-history-scroll">
@@ -223,23 +229,27 @@ function ChoiceHistoryPanel({ entries, storySettings, open, onClose }) {
                 key={`${entry.id}-${index}`}
                 className="cht-entry"
                 style={{ animationDelay: `${index * 55}ms` }}
-              >
-                <div className="cht-spine">
-                  <div className="cht-seal">{entry.sealMotif || index + 1}</div>
-                  {index < entries.length - 1 ? <div className="cht-cord" /> : null}
+                >
+                  <div className="cht-spine">
+                    <div className="cht-seal">{entry.sealMotif || index + 1}</div>
+                    {index < entries.length - 1 ? <div className="cht-cord" /> : null}
+                  </div>
+                  <div className="cht-body">
+                    <div className="cht-meta-row">
+                      {entry.theme ? <div className="cht-theme">{rp(entry.theme)}</div> : null}
+                      <div className="cht-ordinal">Choice {toRoman(index + 1)}</div>
+                    </div>
+                    <div className="cht-label">{rp(entry.label || '')}</div>
+                    <div className="cht-kicker">She chose</div>
+                    <div className="cht-choice">{rp(entry.choiceTitle || '')}</div>
+                    {entry.choiceHint ? <div className="cht-hint">{rp(entry.choiceHint)}</div> : null}
+                  </div>
                 </div>
-                <div className="cht-body">
-                  {entry.theme ? <div className="cht-theme">{rp(entry.theme)}</div> : null}
-                  <div className="cht-label">{rp(entry.label || '')}</div>
-                  <div className="cht-choice">{rp(entry.choiceTitle || '')}</div>
-                  {entry.choiceHint ? <div className="cht-hint">{rp(entry.choiceHint)}</div> : null}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -301,14 +311,14 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
 
 // ── Loading screen ────────────────────────────────────────────────────────────
 
-function LoadingScreen() {
+function BootShell() {
   return (
     <div className="app">
+      <TopBar storySettings={STORY_SETTINGS_DEFAULTS} />
       <div className="desk">
-        <div className="main">
-          <div className="locked">
-            <div className="eye">O</div>
-            <p style={{ fontFamily: 'var(--serif)', color: 'var(--brass)' }}>Loading…</p>
+        <div className="main main-boot">
+          <div className="boot-shell" aria-hidden="true">
+            <div className="boot-shell-note">One moment. The next letter is finding its way to you.</div>
           </div>
         </div>
       </div>
@@ -367,7 +377,7 @@ function NotificationPrompt({ onDone }) {
 
 // ── Player app (receives pre-loaded data as props) ────────────────────────────
 
-function PlayerApp({ content, storySettings, flowMap, initialState }) {
+function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, storyVersionKey }) {
   const days = content?.days || [];
   const flattened = useMemo(() => flattenDays(days), [days]);
 
@@ -388,6 +398,17 @@ function PlayerApp({ content, storySettings, flowMap, initialState }) {
     () => initialState?.selectedChoices ?? {},
   );
 
+  useEffect(() => {
+    if (!historyOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setHistoryOpen(false);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [historyOpen]);
+
   // Save all game state to Supabase on every change
   useEffect(() => {
     saveRemoteState({
@@ -400,8 +421,8 @@ function PlayerApp({ content, storySettings, flowMap, initialState }) {
       activatedDayIds: Array.from(activatedDayIds),
       textPrompts,
       selectedChoices,
-    });
-  }, [showPrologue, idx, envState, chosen, completedIdx, formResponses, activatedDayIds, textPrompts, selectedChoices]);
+    }, storyVersionKey);
+  }, [showPrologue, idx, envState, chosen, completedIdx, formResponses, activatedDayIds, textPrompts, selectedChoices, storyVersionKey]);
 
   // Sync form responses to player_responses table for admin visibility
   const syncedResponses = useRef({});
@@ -614,7 +635,7 @@ function PlayerApp({ content, storySettings, flowMap, initialState }) {
     setHistoryOpen(false);
     setShowPrologue(true);
     // Wipe remote state too
-    saveRemoteState({});
+    saveRemoteState({}, storyVersionKey);
   };
 
   const handleResponseChange = (key, value) => {
@@ -629,8 +650,10 @@ function PlayerApp({ content, storySettings, flowMap, initialState }) {
   if (showPrologue) {
     return (
       <div className="app">
+        <TopBar storySettings={storySettings} />
         <Prologue
           prologue={content.prologue}
+          addressee={storySettings.herName}
           storySettings={storySettings}
           dayCount={days.length}
           envelopeCount={flattened.length}
@@ -643,7 +666,11 @@ function PlayerApp({ content, storySettings, flowMap, initialState }) {
   if (isDone) {
     return (
       <div className="app">
-        <TopBar onHistory={() => setHistoryOpen((open) => !open)} />
+        <TopBar
+          onHistory={() => setHistoryOpen((open) => !open)}
+          storySettings={storySettings}
+        />
+        {historyOpen ? <button className="choice-history-scrim" onClick={() => setHistoryOpen(false)} aria-label="Close choice history" /> : null}
         <ChoiceHistoryPanel
           entries={historyEntries}
           storySettings={storySettings}
@@ -682,7 +709,11 @@ function PlayerApp({ content, storySettings, flowMap, initialState }) {
   if (!env) {
     return (
       <div className="app">
-        <TopBar onHistory={() => setHistoryOpen((open) => !open)} />
+        <TopBar
+          onHistory={() => setHistoryOpen((open) => !open)}
+          storySettings={storySettings}
+        />
+        {historyOpen ? <button className="choice-history-scrim" onClick={() => setHistoryOpen(false)} aria-label="Close choice history" /> : null}
         <div className="desk">
           <div className="main">
             <div className="locked">
@@ -699,7 +730,11 @@ function PlayerApp({ content, storySettings, flowMap, initialState }) {
 
   return (
     <div className="app">
-      <TopBar onHistory={() => setHistoryOpen((open) => !open)} />
+      <TopBar
+        onHistory={() => setHistoryOpen((open) => !open)}
+        storySettings={storySettings}
+      />
+      {historyOpen ? <button className="choice-history-scrim" onClick={() => setHistoryOpen(false)} aria-label="Close choice history" /> : null}
       <ChoiceHistoryPanel
         entries={historyEntries}
         storySettings={storySettings}
@@ -800,52 +835,75 @@ function PlayerApp({ content, storySettings, flowMap, initialState }) {
 // ── App loader — fetches content + state from Supabase, then mounts PlayerApp ─
 
 function App() {
-  const [ready, setReady] = useState(false);
-  const [content, setContent] = useState(null);
-  const [storySettings, setStorySettings] = useState(STORY_SETTINGS_DEFAULTS);
-  const [flowMap, setFlowMap] = useState({ rules: [] });
+  const [storySnapshot, setStorySnapshot] = useState(null);
   const [initialState, setInitialState] = useState(null);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const activeLoadRef = useRef(0);
+
+  const loadStory = useCallback(async () => {
+    const loadId = activeLoadRef.current + 1;
+    activeLoadRef.current = loadId;
+
+    const nextStorySnapshot = await loadActiveStorySnapshot(supabase);
+    const nextInitialState = await fetchRemoteState(nextStorySnapshot.meta.storyVersionKey);
+
+    if (activeLoadRef.current !== loadId) return;
+
+    setStorySnapshot(nextStorySnapshot);
+    setInitialState(nextInitialState || {});
+  }, []);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!storySnapshot) return;
     if (!('Notification' in window) || !('PushManager' in window)) return;
     if (Notification.permission === 'granted') return;
     if (Notification.permission === 'denied') return;
     getExistingSubscription().then((sub) => {
       if (!sub) setShowNotifPrompt(true);
     });
-  }, [ready]);
+  }, [storySnapshot]);
 
   useEffect(() => {
-    async function load() {
-      // Load published story from Supabase (or use default)
-      const storyData = await fetchPublishedStory();
-      setContent(normalizeContentModel(storyData));
-      setStorySettings(normalizeStorySettings(storyData.settings));
+    void loadStory();
+  }, [loadStory]);
 
-      // Load player state
-      const stateResult = await fetchRemoteState();
-      setInitialState(stateResult || {});
+  useEffect(() => {
+    const reloadStory = () => {
+      void loadStory();
+    };
 
-      // Build flow map from story content
-      setFlowMap(buildCompleteFlowMap(storyData, storyData.flowMap || storyData.defaultFlowMap || { rules: [] }));
+    const unsubscribe = subscribeToPublishedStory(supabase, reloadStory);
+    const refreshOnFocus = () => reloadStory();
+    const refreshOnVisible = () => {
+      if (document.visibilityState === 'visible') reloadStory();
+    };
+    const pollInterval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') reloadStory();
+    }, 30000);
 
-      setReady(true);
-    }
+    window.addEventListener('focus', refreshOnFocus);
+    document.addEventListener('visibilitychange', refreshOnVisible);
 
-    load();
-  }, []);
+    return () => {
+      unsubscribe();
+      window.clearInterval(pollInterval);
+      window.removeEventListener('focus', refreshOnFocus);
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+    };
+  }, [loadStory]);
 
-  if (!ready) return <LoadingScreen />;
+  if (!storySnapshot) return <BootShell />;
 
   return (
     <>
       <PlayerApp
-        content={content}
-        storySettings={storySettings}
-        flowMap={flowMap}
+        key={storySnapshot.meta.storyVersionKey}
+        content={storySnapshot.content}
+        storySettings={storySnapshot.storySettings || STORY_SETTINGS_DEFAULTS}
+        flowMap={storySnapshot.flowMap}
         initialState={initialState}
+        storyMeta={storySnapshot.meta}
+        storyVersionKey={storySnapshot.meta.storyVersionKey}
       />
       {showNotifPrompt ? (
         <NotificationPrompt onDone={() => setShowNotifPrompt(false)} />

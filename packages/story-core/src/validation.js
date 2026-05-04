@@ -132,6 +132,27 @@ export function validateStoryContent(content, flowMap) {
           });
         }
 
+        const revealItemIds = new Set();
+        if (Array.isArray(choice.card.revealItems)) {
+          choice.card.revealItems.forEach((item, itemIndex) => {
+            const itemLocation = `${choiceLocation}.card.revealItems[${itemIndex}]`;
+
+            if (!isNonEmptyString(item?.id)) {
+              errors.push(fail('Reveal item id is required.', itemLocation));
+            } else if (revealItemIds.has(item.id)) {
+              errors.push(
+                fail(`Duplicate reveal item id "${item.id}" on choice "${choice.id}".`, itemLocation),
+              );
+            } else {
+              revealItemIds.add(item.id);
+            }
+
+            if (!isNonEmptyString(item?.title)) {
+              warnings.push(fail('Reveal item title is empty.', itemLocation));
+            }
+          });
+        }
+
         if (isNonEmptyString(choice.id)) choiceInputs.set(choice.id, inputIds);
       });
     });

@@ -103,8 +103,56 @@ function normalizeEnvelope(
   next.notify = next.notify === false ? false : !!next.scheduledAt;
   next.branchOnly = !!(next.branchOnly || inheritedBranchOnly);
   if (branchGroup) next.branchGroup = branchGroup;
-  next.choices = Array.isArray(next.choices) ? next.choices : [];
+  next.choices = Array.isArray(next.choices)
+    ? next.choices.map((choice, choiceIndex) => normalizeChoice(choice, choiceIndex))
+    : [];
   return next;
+}
+
+function normalizeRevealItems(items) {
+  if (!Array.isArray(items)) return [];
+
+  return items
+    .map((item, index) => {
+      if (typeof item === 'string') {
+        return {
+          id: `reveal-item-${index + 1}`,
+          title: item,
+          description: '',
+        };
+      }
+
+      const next = deepClone(item || {});
+      return {
+        id: next.id || `reveal-item-${index + 1}`,
+        title: next.title || '',
+        description: next.description || '',
+      };
+    })
+    .filter((item) => item.title || item.description);
+}
+
+function normalizeChoiceCard(card) {
+  const next = deepClone(card || {});
+  return {
+    ...next,
+    heading: next.heading || '',
+    body: next.body || '',
+    rule: next.rule || '',
+    inputs: Array.isArray(next.inputs) ? next.inputs : [],
+    revealItems: normalizeRevealItems(next.revealItems),
+  };
+}
+
+function normalizeChoice(choice, choiceIndex) {
+  const next = deepClone(choice || {});
+  return {
+    ...next,
+    id: next.id || `choice-${choiceIndex + 1}`,
+    title: next.title || '',
+    hint: next.hint || '',
+    card: normalizeChoiceCard(next.card),
+  };
 }
 
 function normalizeDayPrelude(day, dayNumber) {
