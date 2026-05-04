@@ -275,8 +275,7 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
 
   return (
     <div className="timeline">
-      <div className="cord" />
-      <div className="seal-row">
+      <div className="route-strip" aria-hidden="true">
         {visibleDays.map(({ day, index }, visibleIndex) => {
           const dayEnvelopeIndexes = flattened
             .filter((item) => item.dayIndex === index)
@@ -286,16 +285,38 @@ function DayTimeline({ days, flattened, currentIdx, completedIdx, activatedDayId
             dayEnvelopeIndexes.every((envIndex) => completedIdx.has(envIndex));
           const isCurrent = dayEnvelopeIndexes.includes(currentIdx);
           const className = dayComplete ? 'done' : isCurrent ? 'current' : 'future';
+          const offsetClass = visibleIndex % 2 === 0 ? 'route-stop-high' : 'route-stop-low';
+          const nextOffsetClass =
+            visibleIndex % 2 === 0 ? 'route-segment-fall' : 'route-segment-rise';
 
           return (
-            <div key={getDayId(day, index)} className={`seal-node ${className}`}>
-              <div className="seal-medallion">{toRoman(visibleIndex + 1)}</div>
-            </div>
+            <React.Fragment key={getDayId(day, index)}>
+              <div className={`route-stop ${className} ${offsetClass}`}>
+                <div className="route-stop-pin">
+                  <div className="route-stop-envelope">
+                    <span className="route-stop-envelope-back" />
+                    <span className="route-stop-envelope-front" />
+                    <span className="route-stop-envelope-flap" />
+                    <span className="route-stop-seal" />
+                  </div>
+                  <div className="route-stop-dot" />
+                </div>
+                <div className="route-stop-meta">
+                  <span className="route-stop-day">Day {toRoman(visibleIndex + 1)}</span>
+                </div>
+              </div>
+              {visibleIndex < visibleDays.length - 1 ? (
+                <div className={`route-segment ${nextOffsetClass}`}>
+                  <span className="route-segment-line" />
+                </div>
+              ) : null}
+            </React.Fragment>
           );
         })}
       </div>
       {activeDay && (
         <div className="timeline-label">
+          <span className="timeline-label-kicker">Current route</span>
           <span className="timeline-label-day">Day&nbsp;{toRoman(currentVisibleIndex + 1)}</span>
           <span className="timeline-label-sep">·</span>
           <span className="timeline-label-theme">{rp(activeDay.day.title || activeDay.day.theme)}</span>
