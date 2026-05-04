@@ -181,15 +181,9 @@ function TextPromptTray({ prompts, setPrompts }) {
   );
 }
 
-function TopBar({ onHistory, storySettings }) {
-  const addressee = storySettings?.herName?.trim();
-
+function TopBar({ onHistory }) {
   return (
     <div className="top-bar">
-      <div className="brand">
-        <div className="title">Yours, Watching</div>
-        <div className="addressee">{addressee ? `for ${addressee}` : 'for you'}</div>
-      </div>
       <div className="top-right">
         {onHistory ? (
           <button className="top-btn" onClick={onHistory}>Her Choices</button>
@@ -212,7 +206,7 @@ function ChoiceHistoryPanel({ entries, storySettings, open, onClose }) {
           <span className="choice-history-kicker">Private record</span>
           <span className="choice-history-title">Her choices</span>
           <p className="choice-history-intro">
-            A quiet ledger of the paths she has already taken.
+            A trail of the doors she opened, one choice after another.
           </p>
         </div>
         <button onClick={onClose} aria-label="Close">&#x2715;</button>
@@ -229,11 +223,12 @@ function ChoiceHistoryPanel({ entries, storySettings, open, onClose }) {
                 key={`${entry.id}-${index}`}
                 className="cht-entry"
                 style={{ animationDelay: `${index * 55}ms` }}
-                >
-                  <div className="cht-spine">
-                    <div className="cht-seal">{entry.sealMotif || index + 1}</div>
-                    {index < entries.length - 1 ? <div className="cht-cord" /> : null}
-                  </div>
+              >
+                <div className="cht-spine" aria-hidden="true">
+                  <div className="cht-seal">{entry.sealMotif || index + 1}</div>
+                  {index < entries.length - 1 ? <div className="cht-cord" /> : null}
+                </div>
+                <article className="cht-card">
                   <div className="cht-body">
                     <div className="cht-meta-row">
                       {entry.theme ? <div className="cht-theme">{rp(entry.theme)}</div> : null}
@@ -244,8 +239,9 @@ function ChoiceHistoryPanel({ entries, storySettings, open, onClose }) {
                     <div className="cht-choice">{rp(entry.choiceTitle || '')}</div>
                     {entry.choiceHint ? <div className="cht-hint">{rp(entry.choiceHint)}</div> : null}
                   </div>
-                </div>
-              ))}
+                </article>
+              </div>
+            ))}
             </div>
           )}
       </div>

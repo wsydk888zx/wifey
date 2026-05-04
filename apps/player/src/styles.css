@@ -123,7 +123,7 @@ a {
   z-index: 35;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 18px;
   padding:
     calc(20px + env(safe-area-inset-top))
@@ -2023,7 +2023,7 @@ textarea.task-input {
 
 .choice-history-scroll {
   overflow-y: auto;
-  padding: 24px 20px 32px;
+  padding: 24px 18px 36px;
   flex: 1;
 }
 
@@ -2041,6 +2041,7 @@ textarea.task-input {
 .cht-timeline {
   display: flex;
   flex-direction: column;
+  gap: 12px;
 }
 
 @keyframes cht-fade-in {
@@ -2055,8 +2056,10 @@ textarea.task-input {
 }
 
 .cht-entry {
-  display: flex;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: stretch;
+  gap: 14px;
   animation: cht-fade-in 320ms ease both;
 }
 
@@ -2065,16 +2068,19 @@ textarea.task-input {
   flex-direction: column;
   align-items: center;
   flex-shrink: 0;
-  width: 28px;
+  width: 30px;
+  padding-top: 16px;
 }
 
 .cht-seal {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: radial-gradient(circle at 36% 32%, #c9a961, #7a4f1a);
   border: 1px solid rgba(212, 184, 126, 0.45);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 220, 130, 0.25);
+  box-shadow:
+    0 10px 18px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 220, 130, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2088,15 +2094,60 @@ textarea.task-input {
 
 .cht-cord {
   flex: 1;
-  width: 1px;
-  min-height: 20px;
-  background: linear-gradient(to bottom, rgba(184, 152, 98, 0.35), rgba(184, 152, 98, 0.1));
-  margin: 6px 0;
+  width: 2px;
+  min-height: 28px;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(214, 185, 126, 0.62),
+      rgba(184, 152, 98, 0.16)
+    );
+  border-radius: 999px;
+  margin: 8px 0 0;
+}
+
+.cht-card {
+  position: relative;
+  overflow: hidden;
+  min-width: 0;
+  border-radius: 22px;
+  border: 1px solid rgba(198, 168, 113, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(250, 231, 188, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(43, 28, 21, 0.96), rgba(20, 12, 10, 0.98));
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 241, 209, 0.06);
+}
+
+.cht-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255, 243, 214, 0.06), transparent 30%),
+    repeating-linear-gradient(
+      -10deg,
+      rgba(255, 249, 231, 0.015) 0,
+      rgba(255, 249, 231, 0.015) 10px,
+      transparent 10px,
+      transparent 20px
+    );
+  pointer-events: none;
+}
+
+.cht-entry:nth-child(odd) .cht-card {
+  transform: rotate(-0.65deg);
+}
+
+.cht-entry:nth-child(even) .cht-card {
+  transform: translateX(8px) rotate(0.8deg);
 }
 
 .cht-body {
-  padding: 4px 0 26px;
-  flex: 1;
+  position: relative;
+  z-index: 1;
+  padding: 18px 18px 18px;
   min-width: 0;
 }
 
@@ -2105,7 +2156,7 @@ textarea.task-input {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .cht-theme {
@@ -2126,10 +2177,10 @@ textarea.task-input {
   font-family: var(--display);
   font-style: italic;
   font-weight: 400;
-  font-size: 1.12rem;
+  font-size: 1.06rem;
   color: var(--gilt-soft);
   line-height: 1.25;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .cht-kicker {
@@ -2142,13 +2193,13 @@ textarea.task-input {
 
 .cht-choice {
   font-family: var(--serif);
-  font-size: 1.14rem;
+  font-size: 1.02rem;
   color: rgba(244, 233, 211, 0.82);
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .cht-hint {
-  margin-top: 6px;
+  margin-top: 8px;
   font-family: var(--sans);
   font-size: 0.72rem;
   letter-spacing: 0.05em;
@@ -3250,6 +3301,11 @@ textarea.task-input {
 
   .choice-history-panel.open {
     transform: translateY(0);
+  }
+
+  .cht-entry:nth-child(odd) .cht-card,
+  .cht-entry:nth-child(even) .cht-card {
+    transform: none;
   }
 
   .prologue {
