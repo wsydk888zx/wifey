@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pre-deploy preflight: builds both apps, checks .vercel/ isn't tracked,
-# diffs admin .env.local against Vercel env vars, and checks Supabase migrations.
+# validates local player/admin env alignment, and checks Supabase migrations.
 # Usage: bash scripts/preflight.sh [target]
 #   target: admin | player | both (default: both)
 #   When target=admin, also checks AI server health on :8787.
@@ -11,6 +11,17 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
 echo "=== Preflight check ==="
+
+read_env_value() {
+  local file="$1"
+  local key="$2"
+
+  if [ ! -f "$file" ]; then
+    return 0
+  fi
+
+  grep "^${key}=" "$file" 2>/dev/null | tail -1 | cut -d= -f2- | tr -d '"'
+}
 
 # 1. .vercel/ must not be tracked
 TRACKED=$(git ls-files .vercel/ 2>/dev/null || true)
@@ -34,19 +45,53 @@ if [ "$TARGET" != "admin" ]; then
   echo "✓ Player build OK"
 fi
 
-# 4. Compare admin .env.local against Vercel env vars (best-effort)
-ENV_FILE="$REPO_ROOT/apps/admin/.env.local"
-if command -v vercel &>/dev/null && [ -f "$ENV_FILE" ]; then
-  echo "→ Checking Vercel admin env vars match .env.local..."
-  VERCEL_URL=$(vercel env ls production --scope team_2ZGvGqwT3x8G87WEYTAkd4Ax 2>/dev/null | grep VITE_SUPABASE_URL | awk '{print $1}' || true)
-  LOCAL_URL=$(grep VITE_SUPABASE_URL "$ENV_FILE" | cut -d= -f2- | tr -d '"' || true)
-  if [ -n "$VERCEL_URL" ] && [ -n "$LOCAL_URL" ] && [ "$VERCEL_URL" != "$LOCAL_URL" ]; then
-    echo "WARN: VITE_SUPABASE_URL in Vercel doesn't match .env.local — see ops-playbook §7"
+# 4. Validate local env alignment for the two apps
+ADMIN_ENV_FILE="$REPO_ROOT/apps/admin/.env.local"
+PLAYER_ENV_FILE="$REPO_ROOT/apps/player/.env.local"
+
+echo "→ Checking local app env files..."
+
+if [ "$TARGET" != "player" ]; then
+  if [ -f "$ADMIN_ENV_FILE" ]; then
+    echo "✓ Admin .env.local present"
   else
-    echo "✓ Env var check passed (or skipped — vercel CLI env output didn't parse)"
+    echo "WARN: apps/admin/.env.local missing — admin auth/storage config may be unavailable locally"
   fi
-else
-  echo "  (Skipping env-var diff — vercel CLI not found or .env.local missing)"
+fi
+
+if [ "$TARGET" != "admin" ]; then
+  if [ ! -f "$PLAYER_ENV_FILE" ]; then
+    echo "FAIL: apps/player/.env.local missing — player build will fall back to bundled story content"
+    exit 1
+  fi
+  echo "✓ Player .env.local present"
+
+  PLAYER_VAPID_KEY="$(read_env_value "$PLAYER_ENV_FILE" VITE_VAPID_PUBLIC_KEY)"
+  if [ -n "$PLAYER_VAPID_KEY" ]; then
+    echo "✓ Player VAPID key present"
+  else
+    echo "WARN: VITE_VAPID_PUBLIC_KEY missing from apps/player/.env.local"
+  fi
+fi
+
+if [ -f "$ADMIN_ENV_FILE" ] && [ -f "$PLAYER_ENV_FILE" ]; then
+  ADMIN_SUPABASE_URL="$(read_env_value "$ADMIN_ENV_FILE" VITE_SUPABASE_URL)"
+  ADMIN_SUPABASE_KEY="$(read_env_value "$ADMIN_ENV_FILE" VITE_SUPABASE_ANON_KEY)"
+  PLAYER_SUPABASE_URL="$(read_env_value "$PLAYER_ENV_FILE" VITE_SUPABASE_URL)"
+  PLAYER_SUPABASE_KEY="$(read_env_value "$PLAYER_ENV_FILE" VITE_SUPABASE_ANON_KEY)"
+
+  if [ -z "$ADMIN_SUPABASE_URL" ] || [ -z "$ADMIN_SUPABASE_KEY" ]; then
+    echo "WARN: apps/admin/.env.local is missing Supabase vars — see ops-playbook §7"
+  elif [ -z "$PLAYER_SUPABASE_URL" ] || [ -z "$PLAYER_SUPABASE_KEY" ]; then
+    echo "FAIL: apps/player/.env.local is missing Supabase vars — player will not load the live story"
+    exit 1
+  elif [ "$ADMIN_SUPABASE_URL" != "$PLAYER_SUPABASE_URL" ] || [ "$ADMIN_SUPABASE_KEY" != "$PLAYER_SUPABASE_KEY" ]; then
+    echo "FAIL: apps/admin and apps/player point at different Supabase configs"
+    echo "      Align VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before deploying"
+    exit 1
+  else
+    echo "✓ Admin and player Supabase config aligned locally"
+  fi
 fi
 
 # 5. Supabase migration check (D1)

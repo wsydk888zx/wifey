@@ -253,7 +253,7 @@ vercel --prod --yes --cwd apps/admin
 **Prevention:**
 
 - A fail-loud guard now lives in `App.jsx` (red banner + console error) so this surfaces in 5 seconds instead of an hour. Do not remove it.
-- Phase B of `docs/deployment-process-review.md` adds a pre-deploy `scripts/deploy.sh` that diffs `.env.local` against Vercel env vars and aborts if they don't match.
+- Phase B of `docs/archive/legacy/deployment-process-review.md` adds a pre-deploy `scripts/deploy.sh` that diffs `.env.local` against Vercel env vars and aborts if they don't match.
 - Whenever Supabase keys rotate, update **both** `apps/admin/.env.local` AND the Vercel `wifey` project env vars in the same change.
 
 ---

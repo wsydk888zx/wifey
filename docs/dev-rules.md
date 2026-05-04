@@ -19,7 +19,7 @@ This project is in a migration phase. The main goal is to make changes small, re
 - Do not change localStorage keys without a migration.
 - Do not duplicate shared content model or flow-map logic. Move shared behavior into `packages/story-core`.
 - Do not ship admin-only code into `apps/player`.
-- Keep the player dev app reading either packaged content or the local admin draft service, not ad hoc exports by default.
+- Keep the player reading either published Supabase content or packaged fallback content, not ad hoc exports by default.
 
 ## Required Checks
 

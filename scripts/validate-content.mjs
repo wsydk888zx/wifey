@@ -1,39 +1,47 @@
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import vm from 'node:vm';
+import { pathToFileURL } from 'node:url';
 
 import { validateStoryExport } from '../packages/story-core/src/index.js';
 
 const root = resolve(new URL('..', import.meta.url).pathname);
-const defaultJsonConfigs = [
+const defaultJsonConfigCandidates = [
   'config_importable_2026-04-23_revised.json',
   'yours-watching-config.json',
+  'Backup Scripts/config_importable_2026-04-23_revised.json',
+  'Backup Scripts/yours-watching-config.json',
 ];
+
+async function resolveExistingDefaultJsonConfigs() {
+  const existing = [];
+
+  for (const candidate of defaultJsonConfigCandidates) {
+    try {
+      await access(resolve(root, candidate));
+      existing.push(candidate);
+    } catch {
+      // Keep going; the validator should work even if old backup files moved.
+    }
+  }
+
+  return existing;
+}
 
 async function loadContentJs() {
   const dataFilePath = resolve(root, 'packages/story-content/src/storyData.js');
-  const adapterFilePath = resolve(root, 'content.js');
-  const dataRaw = await readFile(dataFilePath, 'utf8');
-  const adapterRaw = await readFile(adapterFilePath, 'utf8');
-  const sandbox = {
-    window: {},
-    console,
-  };
+  const moduleUrl = `${pathToFileURL(dataFilePath).href}?t=${Date.now()}`;
+  const module = await import(moduleUrl);
+  const content = module.storyContent || module.default;
 
-  vm.createContext(sandbox);
-  vm.runInContext(dataRaw, sandbox, { filename: dataFilePath });
-  vm.runInContext(adapterRaw, sandbox, { filename: adapterFilePath });
-
-  const content = sandbox.window.GAME_CONTENT;
   if (!content || typeof content !== 'object') {
-    throw new Error('content.js did not define window.GAME_CONTENT.');
+    throw new Error('storyData.js did not export story content.');
   }
 
   return {
-    label: 'package story data + content.js adapter',
+    label: 'package story data',
     source: {
       content,
-      flowMap: sandbox.window.DEFAULT_FLOW_MAP || content.defaultFlowMap || { rules: [] },
+      flowMap: content.defaultFlowMap || { rules: [] },
     },
   };
 }
@@ -49,7 +57,7 @@ async function loadJsonConfig(fileArg) {
 }
 
 const fileArgs = process.argv.slice(2);
-const jsonConfigTargets = fileArgs.length ? fileArgs : defaultJsonConfigs;
+const jsonConfigTargets = fileArgs.length ? fileArgs : await resolveExistingDefaultJsonConfigs();
 const targets = [await loadContentJs()];
 
 for (const fileArg of jsonConfigTargets) {

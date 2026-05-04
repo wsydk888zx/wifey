@@ -218,25 +218,30 @@ function ChoiceHistoryPanel({ entries, storySettings, open, onClose }) {
           </div>
         ) : (
           <div className="cht-timeline">
+            <div className="cht-backtrail" aria-hidden="true" />
             {entries.map((entry, index) => (
               <div
                 key={`${entry.id}-${index}`}
                 className="cht-entry"
                 style={{ animationDelay: `${index * 55}ms` }}
               >
-                <div className="cht-spine" aria-hidden="true">
-                  <div className="cht-seal">{entry.sealMotif || index + 1}</div>
-                  {index < entries.length - 1 ? <div className="cht-cord" /> : null}
-                </div>
                 <article className="cht-card">
                   <div className="cht-body">
-                    <div className="cht-meta-row">
-                      {entry.theme ? <div className="cht-theme">{rp(entry.theme)}</div> : null}
-                      <div className="cht-ordinal">Choice {toRoman(index + 1)}</div>
+                    <div className="cht-info-grid">
+                      <div className="cht-info-row">
+                        <div className="cht-label">{rp(entry.label || '')}</div>
+                      </div>
+                      {entry.theme ? (
+                        <div className="cht-info-row">
+                          <span className="cht-kicker">Theme</span>
+                          <div className="cht-theme">{rp(entry.theme)}</div>
+                        </div>
+                      ) : null}
                     </div>
-                    <div className="cht-label">{rp(entry.label || '')}</div>
-                    <div className="cht-kicker">She chose</div>
-                    <div className="cht-choice">{rp(entry.choiceTitle || '')}</div>
+                    <div className="cht-letter-copy">
+                      <span className="cht-choice-kicker">She chose</span>
+                      <div className="cht-choice">{rp(entry.choiceTitle || '')}</div>
+                    </div>
                     {entry.choiceHint ? <div className="cht-hint">{rp(entry.choiceHint)}</div> : null}
                   </div>
                 </article>
