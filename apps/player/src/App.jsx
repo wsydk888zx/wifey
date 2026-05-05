@@ -340,39 +340,91 @@ function NotificationPrompt({ onDone }) {
   };
 
   return (
-    <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100,
-      background: 'var(--parchment)', borderTop: '1px solid var(--brass)',
-      padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10,
-      fontFamily: 'var(--sans)',
-    }}>
-      <p style={{ margin: 0, fontFamily: 'var(--serif)', fontSize: '1rem', color: 'var(--ink, #2a1f14)' }}>
-        Enable notifications to know when a new envelope arrives.
-      </p>
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          onClick={handleEnable}
-          disabled={loading}
-          style={{
-            flex: 1, padding: '10px 0', background: 'var(--brass)', color: '#fff',
-            border: 'none', borderRadius: 4, fontFamily: 'var(--sans)', fontSize: '0.9rem',
-            cursor: loading ? 'wait' : 'pointer',
-          }}
-        >
-          {loading ? 'Enabling…' : 'Enable notifications'}
-        </button>
-        <button
-          onClick={onDone}
-          style={{
-            padding: '10px 16px', background: 'transparent', color: 'var(--brass)',
-            border: '1px solid var(--brass)', borderRadius: 4, fontFamily: 'var(--sans)',
-            fontSize: '0.9rem', cursor: 'pointer',
-          }}
-        >
-          Later
-        </button>
+    <>
+      <div
+        onClick={onDone}
+        style={{
+          position: 'fixed', inset: 0, zIndex: 99,
+          background: 'rgba(18, 12, 6, 0.55)',
+          backdropFilter: 'blur(2px)',
+          WebkitBackdropFilter: 'blur(2px)',
+        }}
+      />
+      <div style={{
+        position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)',
+        zIndex: 100, width: 'min(360px, calc(100vw - 2rem))',
+        background: 'var(--parchment, #faf6ee)',
+        border: '1px solid rgba(180,145,80,0.35)',
+        borderRadius: '6px',
+        boxShadow: '0 8px 40px rgba(18,12,6,0.28), 0 1px 0 rgba(255,255,255,0.6) inset',
+        overflow: 'hidden',
+      }}>
+        <div style={{
+          padding: '24px 24px 0',
+          borderBottom: '1px solid rgba(180,145,80,0.18)',
+          paddingBottom: '20px',
+        }}>
+          <div style={{
+            fontFamily: 'var(--serif)',
+            fontSize: '1.05rem',
+            fontWeight: 500,
+            color: 'var(--ink, #2a1f14)',
+            marginBottom: '6px',
+            letterSpacing: '0.01em',
+          }}>
+            Stay close to the story
+          </div>
+          <div style={{
+            fontFamily: 'var(--sans)',
+            fontSize: '0.82rem',
+            color: 'var(--ink-muted, #7a6552)',
+            lineHeight: 1.5,
+          }}>
+            Get a quiet nudge when the next envelope is ready for her.
+          </div>
+        </div>
+        <div style={{
+          display: 'flex', gap: '8px',
+          padding: '16px 24px',
+        }}>
+          <button
+            onClick={handleEnable}
+            disabled={loading}
+            style={{
+              flex: 1,
+              padding: '10px 0',
+              background: 'var(--brass, #b49150)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              fontFamily: 'var(--sans)',
+              fontSize: '0.82rem',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              cursor: loading ? 'wait' : 'pointer',
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? 'Enabling…' : 'Allow notifications'}
+          </button>
+          <button
+            onClick={onDone}
+            style={{
+              padding: '10px 16px',
+              background: 'transparent',
+              color: 'var(--ink-muted, #7a6552)',
+              border: '1px solid rgba(180,145,80,0.35)',
+              borderRadius: '4px',
+              fontFamily: 'var(--sans)',
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+            }}
+          >
+            Not now
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -545,6 +597,11 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
   const chosenChoice = env?.choices?.find((choice) => choice.id === chosen) || null;
   const responseKey = chosenChoice ? `${env.id}::${chosenChoice.id}` : null;
   const currentResponses = responseKey ? formResponses[responseKey] || {} : {};
+  const globalResponses = useMemo(() => {
+    const flat = {};
+    Object.values(formResponses).forEach((r) => Object.assign(flat, r));
+    return flat;
+  }, [formResponses]);
   const rp = useCallback((text) => replacePlaceholders(text, storySettings), [storySettings]);
 
   const handleOpenEnvelope = () => {
@@ -824,6 +881,7 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
               hasChoices={env.choices.length > 1}
               responses={currentResponses}
               onResponseChange={handleResponseChange}
+              globalResponses={globalResponses}
             />
           ) : null}
         </div>

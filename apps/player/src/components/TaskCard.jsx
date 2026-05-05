@@ -13,8 +13,18 @@ function TaskCard({
   hasChoices,
   responses = {},
   onResponseChange,
+  globalResponses = {},
 }) {
-  const rp = (text) => replacePlaceholders(text, storySettings);
+  const rp = (text) => {
+    if (typeof text !== 'string') return text;
+    let result = replacePlaceholders(text, storySettings);
+    if (Object.keys(globalResponses).length > 0) {
+      result = result.replace(/\{\{([^}]+)\}\}/g, (match, key) =>
+        Object.hasOwn(globalResponses, key) ? String(globalResponses[key] || '') : match,
+      );
+    }
+    return result;
+  };
   const [now] = useState(() => {
     const date = new Date();
     return date.toLocaleString('en-US', {
@@ -136,7 +146,7 @@ function TaskCard({
             <div className="date-line">
               {rp(envelope.timeLabel || envelope.label)} · {now}
             </div>
-            <div className="salutation">{addressee ? `My ${addressee},` : 'My love,'}</div>
+            <div className="salutation">{addressee ? `${addressee},` : 'My love,'}</div>
             <div className="letter-heading">{rp(card.heading)}</div>
 
             <div className="fleuron">· ❦ ·</div>
@@ -206,13 +216,7 @@ function TaskCard({
       </div>
 
       <div className="actions">
-        {hasChoices ? (
-          <button className="secondary" onClick={onReselect}>
-            Back to choices
-          </button>
-        ) : (
-          <span />
-        )}
+        <span />
         <button
           className={`complete ${completed ? 'done' : ''}`}
           onClick={onComplete}
