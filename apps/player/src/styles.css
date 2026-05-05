@@ -2037,14 +2037,15 @@ textarea.task-input {
 
 .choice-history-header button {
   position: relative;
-  border: 1px solid rgba(184, 152, 98, 0.16);
-  background: rgba(20, 12, 10, 0.42);
-  color: rgba(244, 233, 211, 0.7);
+  flex-shrink: 0;
+  border: 1px solid rgba(184, 152, 98, 0.32);
+  background: rgba(34, 19, 16, 0.72);
+  color: rgba(244, 233, 211, 0.88);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 1rem;
   line-height: 1;
-  width: 34px;
-  height: 34px;
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
   padding: 0;
   transition:
@@ -2057,14 +2058,16 @@ textarea.task-input {
 .choice-history-header button:hover {
   color: rgba(244, 233, 211, 0.96);
   transform: translateY(-1px);
-  border-color: rgba(184, 152, 98, 0.28);
-  background: rgba(34, 19, 16, 0.72);
+  border-color: rgba(184, 152, 98, 0.5);
+  background: rgba(50, 28, 22, 0.9);
 }
 
 .choice-history-scroll {
   position: relative;
   z-index: 1;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   padding: 18px 18px 36px;
   flex: 1;
 }
@@ -3347,17 +3350,18 @@ textarea.task-input {
   }
 
   .choice-history-panel {
-    top: auto;
+    top: 0;
     bottom: 0;
     right: 0;
     left: 0;
     width: 100%;
-    height: 78dvh;
+    height: 100%;
     border-left: none;
-    border-top: 1px solid rgba(184, 152, 98, 0.15);
-    border-radius: 16px 16px 0 0;
+    border-top: none;
+    border-radius: 0;
     box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.6);
     transform: translateY(calc(100% + 4px));
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   .choice-history-panel.open {
