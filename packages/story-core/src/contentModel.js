@@ -101,6 +101,11 @@ function normalizeEnvelope(
   next.sealMotif = next.sealMotif || String(dayNumber);
   next.scheduledAt = next.scheduledAt || null;
   next.notify = next.notify === false ? false : !!next.scheduledAt;
+  next.reminderAt = next.reminderAt || null;
+  next.reminderIntervalMinutes = next.reminderIntervalMinutes || null;
+  next.reminderMaxCount = next.reminderMaxCount ?? 0;
+  next.reminderTitle = next.reminderTitle || null;
+  next.reminderBody = next.reminderBody || null;
   next.branchOnly = !!(next.branchOnly || inheritedBranchOnly);
   if (branchGroup) next.branchGroup = branchGroup;
   next.choices = Array.isArray(next.choices)

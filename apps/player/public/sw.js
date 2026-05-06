@@ -1,4 +1,4 @@
-const CACHE = 'yours-watching-v1';
+const CACHE = 'your-master-v1';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

@@ -28,22 +28,6 @@ function uint8ArrayToBase64url(arr: Uint8Array): string {
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-async function importVapidKeys() {
-  const publicKey = base64urlToUint8Array(Deno.env.get('VAPID_PUBLIC_KEY')!);
-  const privateKey = base64urlToUint8Array(Deno.env.get('VAPID_PRIVATE_KEY')!);
-
-  const privateJwk = await crypto.subtle.importKey(
-    'raw', privateKey,
-    { name: 'ECDH', namedCurve: 'P-256' },
-    true, ['deriveKey'],
-  );
-  const publicJwk = await crypto.subtle.importKey(
-    'raw', publicKey,
-    { name: 'ECDH', namedCurve: 'P-256' },
-    true, [],
-  );
-  return { publicKey, publicJwk, privateJwk };
-}
 
 async function buildVapidJwt(audience: string): Promise<string> {
   const subject = Deno.env.get('VAPID_SUBJECT')!;
@@ -57,9 +41,18 @@ async function buildVapidJwt(audience: string): Promise<string> {
   );
   const sigInput = new TextEncoder().encode(`${header}.${payload}`);
 
-  const privateKey = base64urlToUint8Array(Deno.env.get('VAPID_PRIVATE_KEY')!);
+  // EC private keys must be imported as JWK — raw format only works for public keys.
+  // Reconstruct JWK from the raw private scalar + the uncompressed public key (04 || x || y).
+  const privBytes = base64urlToUint8Array(Deno.env.get('VAPID_PRIVATE_KEY')!);
+  const pubBytes = base64urlToUint8Array(Deno.env.get('VAPID_PUBLIC_KEY')!);
   const signingKey = await crypto.subtle.importKey(
-    'raw', privateKey,
+    'jwk',
+    {
+      kty: 'EC', crv: 'P-256',
+      d: uint8ArrayToBase64url(privBytes),
+      x: uint8ArrayToBase64url(pubBytes.slice(1, 33)),
+      y: uint8ArrayToBase64url(pubBytes.slice(33, 65)),
+    },
     { name: 'ECDSA', namedCurve: 'P-256' },
     false, ['sign'],
   );
@@ -124,8 +117,7 @@ async function sendWebPush(
   const paddedPayload = new Uint8Array([0, 0, ...new TextEncoder().encode(payload)]);
   const encrypted = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, paddedPayload));
 
-  const body = buildEncryptedBody(salt, serverPublicKey, encrypted);
-
+  // For aesgcm, the body is just the ciphertext; salt and DH key go in headers
   const res = await fetch(subscription.endpoint, {
     method: 'POST',
     headers: {
@@ -136,7 +128,7 @@ async function sendWebPush(
       'Crypto-Key': `dh=${uint8ArrayToBase64url(serverPublicKey)};p256ecdsa=${vapidPublic}`,
       TTL: '86400',
     },
-    body,
+    body: encrypted,
   });
 
   return { ok: res.ok || res.status === 201, status: res.status };
@@ -154,34 +146,21 @@ function buildInfo(type: string, clientKey: Uint8Array, serverKey: Uint8Array): 
   return buf;
 }
 
-function buildEncryptedBody(salt: Uint8Array, serverKey: Uint8Array, ciphertext: Uint8Array): Uint8Array {
-  const RS = 4096;
-  const header = new Uint8Array(21 + serverKey.length);
-  header.set(salt, 0);
-  new DataView(header.buffer).setUint32(16, RS, false);
-  header[20] = serverKey.length;
-  header.set(serverKey, 21);
-  const body = new Uint8Array(header.length + ciphertext.length);
-  body.set(header, 0);
-  body.set(ciphertext, header.length);
-  return body;
-}
-
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async () => {
-  // Read story_content to find envelopes with scheduledAt + notify
+  // Read the published story to find envelopes with scheduledAt + notify
   const { data: storyRow, error: storyError } = await supabase
-    .from('story_content')
-    .select('content')
-    .eq('id', 'main')
+    .from('stories')
+    .select('days')
+    .eq('is_published', true)
     .single();
 
   if (storyError || !storyRow) {
-    return new Response('No story content', { status: 200 });
+    return new Response('No published story', { status: 200 });
   }
 
-  const days: any[] = storyRow.content?.days ?? [];
+  const days: any[] = storyRow.days ?? [];
   const now = new Date();
 
   // Collect all envelopes that should have fired by now and haven't been sent yet
@@ -212,7 +191,54 @@ Deno.serve(async () => {
     }
   }
 
-  if (!due.length) {
+  // Collect reminders due: envelopes with reminderAt set, choices not yet made, interval elapsed
+  type ReminderDue = { envelopeId: string; title: string; body: string; reminderIndex: number };
+  const dueReminders: ReminderDue[] = [];
+
+  for (const day of days) {
+    const envelopes: any[] = day.envelopes ?? [];
+    for (const env of envelopes) {
+      if (!env?.reminderAt || !env?.reminderIntervalMinutes) continue;
+      const reminderStart = new Date(env.reminderAt);
+      if (reminderStart > now) continue;
+
+      // Skip if a choice has already been made for this envelope
+      const { data: response } = await supabase
+        .from('player_responses')
+        .select('id')
+        .eq('envelope_id', env.id)
+        .maybeSingle();
+      if (response) continue;
+
+      // How many reminders have already been sent?
+      const { count: sentCount } = await supabase
+        .from('sent_reminders')
+        .select('id', { count: 'exact', head: true })
+        .eq('envelope_id', env.id);
+      const alreadySent = sentCount ?? 0;
+
+      // Respect max count (0 = unlimited)
+      const maxCount: number = env.reminderMaxCount ?? 0;
+      if (maxCount > 0 && alreadySent >= maxCount) continue;
+
+      // Is the next reminder window due?
+      const intervalMs = env.reminderIntervalMinutes * 60 * 1000;
+      const nextFireAt = new Date(reminderStart.getTime() + alreadySent * intervalMs);
+      if (nextFireAt > now) continue;
+
+      dueReminders.push({
+        envelopeId: env.id,
+        title: env.reminderTitle || env.notificationTitle || 'Your Master',
+        body: env.reminderBody || 'You still have a choice waiting.',
+        reminderIndex: alreadySent + 1,
+      });
+    }
+  }
+
+  const allDue = [...due.map(n => ({ ...n, type: 'initial' as const })),
+                  ...dueReminders.map(r => ({ ...r, type: 'reminder' as const }))];
+
+  if (!allDue.length) {
     return new Response('Nothing due', { status: 200 });
   }
 
@@ -227,7 +253,7 @@ Deno.serve(async () => {
 
   const results: string[] = [];
 
-  for (const notification of due) {
+  for (const notification of allDue) {
     const payload = JSON.stringify({
       title: notification.title,
       body: notification.body,
@@ -236,23 +262,37 @@ Deno.serve(async () => {
 
     let sentCount = 0;
     for (const sub of subscriptions) {
-      const result = await sendWebPush(sub, payload);
-      if (result.ok) sentCount++;
-      // Remove stale subscriptions (gone/expired)
-      if (result.status === 410 || result.status === 404) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+      try {
+        const result = await sendWebPush(sub, payload);
+        if (result.ok) sentCount++;
+        if (result.status === 410 || result.status === 404) {
+          await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+        }
+      } catch (_err) {
+        // Skip this subscription on unexpected error
       }
     }
 
-    await supabase.from('sent_notifications').insert({
-      envelope_id: notification.envelopeId,
-      title: notification.title,
-      body: notification.body,
-      sent_at: new Date().toISOString(),
-      recipients: sentCount,
-    });
+    if (notification.type === 'initial') {
+      await supabase.from('sent_notifications').insert({
+        envelope_id: notification.envelopeId,
+        title: notification.title,
+        body: notification.body,
+        sent_at: new Date().toISOString(),
+        recipients: sentCount,
+      });
+    } else {
+      await supabase.from('sent_reminders').insert({
+        envelope_id: notification.envelopeId,
+        reminder_index: (notification as ReminderDue).reminderIndex,
+        title: notification.title,
+        body: notification.body,
+        sent_at: new Date().toISOString(),
+        recipients: sentCount,
+      });
+    }
 
-    results.push(`${notification.envelopeId}: sent to ${sentCount}`);
+    results.push(`${notification.type}:${notification.envelopeId}: sent to ${sentCount}`);
   }
 
   return new Response(results.join('\n'), { status: 200 });

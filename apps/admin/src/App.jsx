@@ -3340,6 +3340,75 @@ function AdminApp() {
                             />
                           </label>
                         </div>
+                        <div className="notif-row-fields" style={{ marginTop: 12, borderTop: '1px solid rgba(255,255,255,0.07)', paddingTop: 12 }}>
+                          <span style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.5, marginBottom: 8, display: 'block' }}>Reminders — if no choice made</span>
+                          <label className="field-block">
+                            <span>First Reminder At</span>
+                            <input
+                              type="datetime-local"
+                              value={envelope.reminderAt ? envelope.reminderAt.slice(0, 16) : ''}
+                              onChange={(e) => {
+                                updateEnvelope(dayIndex, envIndex, {
+                                  reminderAt: e.target.value ? new Date(e.target.value).toISOString() : null,
+                                });
+                              }}
+                            />
+                          </label>
+                          <label className="field-block">
+                            <span>Repeat Every (minutes)</span>
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="e.g. 60"
+                              value={envelope.reminderIntervalMinutes || ''}
+                              onChange={(e) => {
+                                updateEnvelope(dayIndex, envIndex, {
+                                  reminderIntervalMinutes: e.target.value ? parseInt(e.target.value, 10) : null,
+                                });
+                              }}
+                            />
+                          </label>
+                          <label className="field-block">
+                            <span>Max Reminders (0 = unlimited)</span>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="0"
+                              value={envelope.reminderMaxCount ?? 0}
+                              onChange={(e) => {
+                                updateEnvelope(dayIndex, envIndex, {
+                                  reminderMaxCount: parseInt(e.target.value, 10) || 0,
+                                });
+                              }}
+                            />
+                          </label>
+                          <label className="field-block">
+                            <span>Reminder Title</span>
+                            <input
+                              type="text"
+                              placeholder="Still waiting…"
+                              value={envelope.reminderTitle || ''}
+                              onChange={(e) => {
+                                updateEnvelope(dayIndex, envIndex, {
+                                  reminderTitle: e.target.value,
+                                });
+                              }}
+                            />
+                          </label>
+                          <label className="field-block">
+                            <span>Reminder Body</span>
+                            <input
+                              type="text"
+                              placeholder="You still have a choice waiting."
+                              value={envelope.reminderBody || ''}
+                              onChange={(e) => {
+                                updateEnvelope(dayIndex, envIndex, {
+                                  reminderBody: e.target.value,
+                                });
+                              }}
+                            />
+                          </label>
+                        </div>
                       </div>
                     );
                   })
