@@ -915,8 +915,13 @@ function App() {
   useEffect(() => {
     if (!storySnapshot) return;
     if (!('Notification' in window) || !('PushManager' in window)) return;
-    if (Notification.permission === 'granted') return;
     if (Notification.permission === 'denied') return;
+    if (Notification.permission === 'granted') {
+      // Permission already granted — silently re-sync subscription to DB
+      // (covers the case where DB was cleared but browser still has a valid sub)
+      subscribeToPush();
+      return;
+    }
     getExistingSubscription().then((sub) => {
       if (!sub) setShowNotifPrompt(true);
     });
