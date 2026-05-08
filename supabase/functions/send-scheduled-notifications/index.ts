@@ -146,7 +146,6 @@ async function sendWebPush(
     body,
   });
 
-  const body2 = await res.text().catch(() => '');
   return { ok: res.ok || res.status === 201, status: res.status };
 }
 
@@ -188,7 +187,7 @@ Deno.serve(async () => {
 
       due.push({
         envelopeId: env.id,
-        title: env.notificationTitle || 'Yours, Watching',
+        title: env.notificationTitle || 'Your Master',
         body: env.notificationBody || 'Your next envelope is waiting.',
         fireAt,
       });
