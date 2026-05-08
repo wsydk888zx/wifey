@@ -140,7 +140,10 @@ export const storyContent = {
           ],
           "slot": "slot-2",
           "sealMotif": "1",
-          "branchOnly": false
+          "branchOnly": false,
+          "scheduledAt": "2026-05-08T02:00:00Z",
+          "lockedHeading": "Not yet.",
+          "lockedBody": "Come back at {time}."
         }
       ],
       "day": 1,

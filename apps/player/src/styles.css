@@ -359,6 +359,7 @@ a {
 }
 
 .main-envelope,
+.main-locked,
 .main-finale {
   min-height: 380px;
 }
@@ -1926,6 +1927,78 @@ textarea.task-input {
   font-size: 1.18rem;
   line-height: 1.6;
   color: var(--ink-soft);
+}
+
+/* ── Locked View (scheduled envelope) ──────────────────── */
+
+.locked-view {
+  position: relative;
+  width: min(100%, 680px);
+  margin: 0 auto;
+  padding: 64px 42px;
+  text-align: center;
+  border-radius: 2px;
+  background:
+    radial-gradient(ellipse at 20% 15%, #faf0db 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 85%, #e8d9b6 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, #f4e9d3 0%, #ead9b8 100%);
+  color: var(--ink);
+  box-shadow:
+    0 2px 0 rgba(201, 182, 143, 0.4),
+    0 4px 0 rgba(201, 182, 143, 0.25),
+    0 40px 70px -25px rgba(0, 0, 0, 0.7),
+    inset 0 0 100px rgba(122, 82, 40, 0.06);
+}
+
+.locked-view::before {
+  content: '';
+  position: absolute;
+  inset: 24px;
+  border: 1px solid rgba(180, 140, 90, 0.12);
+  pointer-events: none;
+}
+
+.locked-eye {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(122, 31, 51, 0.22) 0%, transparent 72%);
+  color: var(--wine);
+  font-size: 2rem;
+  font-weight: bold;
+  animation: watchpulse 2.8s ease-out infinite;
+}
+
+.locked-heading {
+  margin: 0 0 16px;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--wine-deep);
+  font-size: 2rem;
+}
+
+.locked-body {
+  margin: 0 auto 24px;
+  max-width: 34ch;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.18rem;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.locked-countdown {
+  margin-top: 32px;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  color: rgba(122, 31, 51, 0.6);
+  text-transform: uppercase;
 }
 
 /* ── Choice History Panel ─────────────────────────────── */

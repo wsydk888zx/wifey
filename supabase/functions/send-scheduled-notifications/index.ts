@@ -205,6 +205,12 @@ Deno.serve(async () => {
       const reminderStart = new Date(env.reminderAt);
       if (reminderStart > now) continue;
 
+      // Only send reminders for envelopes that are unlocked (scheduledAt has passed or is null)
+      if (env.scheduledAt) {
+        const scheduledTime = new Date(env.scheduledAt);
+        if (scheduledTime > now) continue;
+      }
+
       // Skip if a choice has already been made for this envelope
       const { data: response } = await supabase
         .from('player_responses')

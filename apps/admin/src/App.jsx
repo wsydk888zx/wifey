@@ -3408,6 +3408,38 @@ function AdminApp() {
                               }}
                             />
                           </label>
+                          <div className="field-note" style={{ marginBottom: 12 }}>
+                            <strong>Locked Envelope Message</strong> (optional — shown while envelope is scheduled)
+                          </div>
+                          <label className="field-block">
+                            <span>Locked Heading</span>
+                            <input
+                              type="text"
+                              placeholder="Not yet."
+                              value={envelope.lockedHeading || ''}
+                              onChange={(e) => {
+                                updateEnvelope(dayIndex, envIndex, {
+                                  lockedHeading: e.target.value,
+                                });
+                              }}
+                            />
+                          </label>
+                          <label className="field-block">
+                            <span>Locked Body</span>
+                            <input
+                              type="text"
+                              placeholder="Come back at {time}."
+                              value={envelope.lockedBody || ''}
+                              onChange={(e) => {
+                                updateEnvelope(dayIndex, envIndex, {
+                                  lockedBody: e.target.value,
+                                });
+                              }}
+                            />
+                            <small style={{ color: 'var(--ink-muted, #7a6552)', display: 'block', marginTop: 4 }}>
+                              Placeholders: {'{time}'}, {'{date}'}, {'{relative}'}
+                            </small>
+                          </label>
                         </div>
                       </div>
                     );

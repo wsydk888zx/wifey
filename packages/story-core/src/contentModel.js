@@ -106,6 +106,8 @@ function normalizeEnvelope(
   next.reminderMaxCount = next.reminderMaxCount ?? 0;
   next.reminderTitle = next.reminderTitle || null;
   next.reminderBody = next.reminderBody || null;
+  next.lockedHeading = next.lockedHeading || null;
+  next.lockedBody = next.lockedBody || null;
   next.branchOnly = !!(next.branchOnly || inheritedBranchOnly);
   if (branchGroup) next.branchGroup = branchGroup;
   next.choices = Array.isArray(next.choices)

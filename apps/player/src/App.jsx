@@ -12,6 +12,7 @@ import {
 import Envelope from './components/Envelope.jsx';
 import Prologue from './components/Prologue.jsx';
 import TaskCard from './components/TaskCard.jsx';
+import LockedView from './components/LockedView.jsx';
 import { loadActiveStorySnapshot, subscribeToPublishedStory } from './storySync.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -105,6 +106,10 @@ function isEnvelopeActive(item, activatedDayIds) {
     activatedDayIds.has(item.envelopeId) ||
     (item.branchGroup && activatedDayIds.has(item.branchGroup))
   );
+}
+
+function isEnvelopeUnlocked(envelope, now = new Date()) {
+  return !envelope.scheduledAt || new Date(envelope.scheduledAt) <= now;
 }
 
 function matchesBranchRule(rule, responses) {
@@ -450,6 +455,7 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
   const [selectedChoices, setSelectedChoices] = useState(
     () => initialState?.selectedChoices ?? {},
   );
+  const [lockRefresh, setLockRefresh] = useState(0);
 
   useEffect(() => {
     if (!historyOpen) return undefined;
@@ -594,6 +600,7 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
 
   const env = current?.envelope || null;
   const envDisplay = current ? envelopeDisplay.get(current.envelopeId) : null;
+  const isCurrentLocked = env && !isEnvelopeUnlocked(env);
   const chosenChoice = env?.choices?.find((choice) => choice.id === chosen) || null;
   const responseKey = chosenChoice ? `${env.id}::${chosenChoice.id}` : null;
   const currentResponses = responseKey ? formResponses[responseKey] || {} : {};
@@ -612,6 +619,9 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
 
   const handleChoose = (choiceId) => setChosen(choiceId);
   const handleReselect = () => setChosen(null);
+  const handleEnvelopeUnlock = useCallback(() => {
+    setLockRefresh((r) => r + 1);
+  }, []);
 
   const queueTextPrompt = (prompt) => {
     setTextPrompts((prev) => [prompt, ...prev]);
@@ -810,14 +820,25 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
         />
         <div
           className={`main ${
-            envState !== 'opened'
-              ? 'main-envelope'
-              : chosenChoice
-                ? 'main-letter'
-                : 'main-choices'
+            isCurrentLocked
+              ? 'main-locked'
+              : envState !== 'opened'
+                ? 'main-envelope'
+                : chosenChoice
+                  ? 'main-letter'
+                  : 'main-choices'
           }`}
         >
-          {envState !== 'opened' ? (
+          {isCurrentLocked ? (
+            <LockedView
+              key={lockRefresh}
+              envelope={env}
+              storySettings={storySettings}
+              onUnlock={handleEnvelopeUnlock}
+            />
+          ) : null}
+
+          {!isCurrentLocked && envState !== 'opened' ? (
             <>
               <div className="stage-copy">
                 <div className="slot-label">{rp(envDisplay?.label || env.label)}</div>
