@@ -3409,13 +3409,31 @@ function AdminApp() {
                             />
                           </label>
                           <div className="field-note" style={{ marginBottom: 12 }}>
-                            <strong>Locked Envelope Message</strong> (optional — shown while envelope is scheduled)
+                            <strong>Locked Envelope Message</strong> (optional — shown while envelope is waiting)
                           </div>
+                          <label className="field-block">
+                            <span>Unlock offset (minutes after previous)</span>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="e.g. 360 = 6 hours"
+                              value={envelope.unlockOffsetMinutes ?? ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                updateEnvelope(dayIndex, envIndex, {
+                                  unlockOffsetMinutes: val === '' ? null : Number(val),
+                                });
+                              }}
+                            />
+                            <small style={{ color: 'var(--ink-muted, #7a6552)', display: 'block', marginTop: 4 }}>
+                              Minutes after the previous envelope is completed. Leave blank for instant unlock.
+                            </small>
+                          </label>
                           <label className="field-block">
                             <span>Locked Heading</span>
                             <input
                               type="text"
-                              placeholder="Not yet."
+                              placeholder={`Patience, {herName}.`}
                               value={envelope.lockedHeading || ''}
                               onChange={(e) => {
                                 updateEnvelope(dayIndex, envIndex, {
@@ -3428,7 +3446,7 @@ function AdminApp() {
                             <span>Locked Body</span>
                             <input
                               type="text"
-                              placeholder="Come back at {time}."
+                              placeholder="Your next card comes later. Sit with this one."
                               value={envelope.lockedBody || ''}
                               onChange={(e) => {
                                 updateEnvelope(dayIndex, envIndex, {
@@ -3438,6 +3456,23 @@ function AdminApp() {
                             />
                             <small style={{ color: 'var(--ink-muted, #7a6552)', display: 'block', marginTop: 4 }}>
                               Placeholders: {'{time}'}, {'{date}'}, {'{relative}'}
+                            </small>
+                          </label>
+                          <label className="field-block">
+                            <span>Tease messages (one per line)</span>
+                            <textarea
+                              rows={3}
+                              placeholder={`I said be patient. Come back later.\nStop testing me. You wait.\nYou already know the answer. Not yet.`}
+                              value={Array.isArray(envelope.lockedTeases) ? envelope.lockedTeases.join('\n') : ''}
+                              onChange={(e) => {
+                                const lines = e.target.value.split('\n').map((l) => l.trim()).filter(Boolean);
+                                updateEnvelope(dayIndex, envIndex, {
+                                  lockedTeases: lines.length ? lines : null,
+                                });
+                              }}
+                            />
+                            <small style={{ color: 'var(--ink-muted, #7a6552)', display: 'block', marginTop: 4 }}>
+                              Shown when she taps the seal. Cycles through each line. Leave blank for defaults.
                             </small>
                           </label>
                         </div>

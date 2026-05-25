@@ -108,8 +108,26 @@ function isEnvelopeActive(item, activatedDayIds) {
   );
 }
 
-function isEnvelopeUnlocked(envelope, now = new Date()) {
-  return !envelope.scheduledAt || new Date(envelope.scheduledAt) <= now;
+function isEnvelopeUnlocked(envelope, completedAtMap = {}, previousEnvelopeId = null, now = new Date()) {
+  if (envelope.scheduledAt) {
+    return new Date(envelope.scheduledAt) <= now;
+  }
+  if (envelope.unlockOffsetMinutes && previousEnvelopeId) {
+    const prevCompletedAt = completedAtMap[previousEnvelopeId];
+    if (!prevCompletedAt) return true;
+    return new Date(prevCompletedAt).getTime() + envelope.unlockOffsetMinutes * 60_000 <= now.getTime();
+  }
+  return true;
+}
+
+function getEffectiveUnlockTime(envelope, completedAtMap, previousEnvelopeId) {
+  if (envelope.scheduledAt) return new Date(envelope.scheduledAt);
+  if (envelope.unlockOffsetMinutes && previousEnvelopeId) {
+    const prevCompletedAt = completedAtMap[previousEnvelopeId];
+    if (!prevCompletedAt) return null;
+    return new Date(new Date(prevCompletedAt).getTime() + envelope.unlockOffsetMinutes * 60_000);
+  }
+  return null;
 }
 
 function matchesBranchRule(rule, responses) {
@@ -456,6 +474,7 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
     () => initialState?.selectedChoices ?? {},
   );
   const [lockRefresh, setLockRefresh] = useState(0);
+  const [completedAtMap, setCompletedAtMap] = useState(() => initialState?.completedAtMap ?? {});
 
   useEffect(() => {
     if (!historyOpen) return undefined;
@@ -480,8 +499,9 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
       activatedDayIds: Array.from(activatedDayIds),
       textPrompts,
       selectedChoices,
+      completedAtMap,
     }, storyVersionKey);
-  }, [showPrologue, idx, envState, chosen, completedIdx, formResponses, activatedDayIds, textPrompts, selectedChoices, storyVersionKey]);
+  }, [showPrologue, idx, envState, chosen, completedIdx, formResponses, activatedDayIds, textPrompts, selectedChoices, completedAtMap, storyVersionKey]);
 
   // Sync form responses to player_responses table for admin visibility
   const syncedResponses = useRef({});
@@ -600,7 +620,20 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
 
   const env = current?.envelope || null;
   const envDisplay = current ? envelopeDisplay.get(current.envelopeId) : null;
-  const isCurrentLocked = env && !isEnvelopeUnlocked(env);
+
+  const previousEnvelopeId = useMemo(() => {
+    if (idx === 0) return null;
+    let prevFlatIdx = -1;
+    for (const ci of completedIdx) {
+      if (ci < idx && ci > prevFlatIdx) prevFlatIdx = ci;
+    }
+    return prevFlatIdx >= 0 ? (flattened[prevFlatIdx]?.envelopeId || null) : null;
+  }, [completedIdx, idx, flattened]);
+
+  const isCurrentLocked = env && !isEnvelopeUnlocked(env, completedAtMap, previousEnvelopeId);
+  const effectiveUnlockTime = isCurrentLocked
+    ? getEffectiveUnlockTime(env, completedAtMap, previousEnvelopeId)
+    : null;
   const chosenChoice = env?.choices?.find((choice) => choice.id === chosen) || null;
   const responseKey = chosenChoice ? `${env.id}::${chosenChoice.id}` : null;
   const currentResponses = responseKey ? formResponses[responseKey] || {} : {};
@@ -681,6 +714,7 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
 
     setCompletedIdx((prev) => { const next = new Set(prev); next.add(idx); return next; });
     setSelectedChoices((prev) => ({ ...prev, [env.id]: chosenChoice.id }));
+    setCompletedAtMap((prev) => ({ ...prev, [env.id]: new Date().toISOString() }));
     setActivatedDayIds(nextState.activated);
 
     window.setTimeout(() => {
@@ -700,6 +734,7 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
     setActivatedDayIds(new Set());
     setTextPrompts([]);
     setSelectedChoices({});
+    setCompletedAtMap({});
     setHistoryOpen(false);
     setShowPrologue(true);
     // Wipe remote state too
@@ -833,6 +868,7 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
             <LockedView
               key={lockRefresh}
               envelope={env}
+              unlockAt={effectiveUnlockTime}
               storySettings={storySettings}
               onUnlock={handleEnvelopeUnlock}
             />
