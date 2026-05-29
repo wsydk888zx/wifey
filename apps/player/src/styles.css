@@ -1933,31 +1933,29 @@ textarea.task-input {
 
 .locked-view {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: min(100%, 680px);
   margin: 0 auto;
-  min-height: 480px;
-  padding: 56px 40px;
+  padding: 64px 42px;
   text-align: center;
   border-radius: 2px;
+  /* Cooler, more neutral parchment — same world, just waiting */
   background:
-    radial-gradient(ellipse 70% 50% at 50% 30%, rgba(90, 15, 35, 0.55) 0%, transparent 70%),
-    radial-gradient(ellipse 100% 80% at 50% 100%, rgba(20, 4, 10, 0.9) 0%, transparent 70%),
-    linear-gradient(170deg, #1a0810 0%, #110609 55%, #0d0407 100%);
+    radial-gradient(ellipse at 20% 15%, #ede8df 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 85%, #d8d2c5 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, #e4dfd5 0%, #d2cbbe 100%);
+  color: var(--ink);
   box-shadow:
-    0 2px 0 rgba(122, 31, 51, 0.3),
-    0 4px 0 rgba(60, 8, 20, 0.4),
-    0 40px 80px -20px rgba(0, 0, 0, 0.9),
-    inset 0 0 60px rgba(90, 15, 35, 0.1);
+    0 2px 0 rgba(180, 170, 155, 0.4),
+    0 4px 0 rgba(160, 150, 135, 0.25),
+    0 40px 70px -25px rgba(0, 0, 0, 0.65),
+    inset 0 0 100px rgba(90, 80, 60, 0.04);
 }
 
 .locked-view::before {
   content: '';
   position: absolute;
-  inset: 20px;
-  border: 1px solid rgba(184, 51, 74, 0.08);
+  inset: 24px;
+  border: 1px solid rgba(180, 140, 90, 0.12);
   pointer-events: none;
 }
 
@@ -1975,33 +1973,35 @@ textarea.task-input {
   position: relative;
   width: var(--seal-size);
   height: var(--seal-size);
-  margin: 0 auto 36px;
+  margin: 0 auto 32px;
   background: none;
   border: none;
   cursor: pointer;
   padding: 0;
-  animation: seal-breathe 4s ease-in-out infinite;
+  animation: seal-breathe 4.5s ease-in-out infinite;
   filter:
-    drop-shadow(0 4px 8px rgba(40, 4, 10, 0.7))
-    drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))
-    brightness(0.82);
+    drop-shadow(0 4px 6px rgba(40, 4, 10, 0.4))
+    drop-shadow(0 10px 18px rgba(0, 0, 0, 0.3))
+    saturate(0.65)
+    brightness(0.9);
   transform-origin: center;
-  transition: filter 200ms ease;
+  transition: filter 220ms ease;
 }
 
 .locked-seal-host:hover {
   filter:
-    drop-shadow(0 4px 8px rgba(40, 4, 10, 0.7))
-    drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6))
+    drop-shadow(0 4px 6px rgba(40, 4, 10, 0.4))
+    drop-shadow(0 10px 18px rgba(0, 0, 0, 0.3))
+    saturate(0.85)
     brightness(0.96);
 }
 
 .locked-seal-host.locked-seal-tapped {
-  animation: seal-tap 0.55s ease-out forwards;
+  animation: seal-tap 0.5s ease-out forwards;
   filter:
-    drop-shadow(0 4px 8px rgba(40, 4, 10, 0.5))
-    drop-shadow(0 0 20px rgba(181, 51, 74, 0.45))
-    brightness(1.1);
+    drop-shadow(0 4px 6px rgba(40, 4, 10, 0.4))
+    saturate(1.1)
+    brightness(1.08);
 }
 
 /* Override wax-seal's absolute positioning for standalone use */
@@ -2048,7 +2048,7 @@ textarea.task-input {
 }
 
 .locked-text {
-  min-height: 110px;
+  min-height: 100px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2056,69 +2056,69 @@ textarea.task-input {
 }
 
 .locked-heading {
-  margin: 0 0 18px;
+  margin: 0 0 16px;
   font-family: var(--display);
   font-style: italic;
   font-weight: 400;
-  font-size: 2.15rem;
+  font-size: 2rem;
   line-height: 1.1;
-  color: rgba(244, 220, 210, 0.92);
+  color: var(--wine-deep);
   animation: locked-text-in 0.6s ease both;
 }
 
 .locked-body {
   margin: 0 auto;
-  max-width: 30ch;
+  max-width: 32ch;
   font-family: var(--serif);
   font-style: italic;
   font-size: 1.15rem;
-  line-height: 1.7;
+  line-height: 1.65;
   white-space: pre-line;
-  color: rgba(220, 185, 175, 0.65);
-  animation: locked-text-in 0.7s 0.1s ease both;
+  color: var(--ink-soft);
+  animation: locked-text-in 0.7s 0.08s ease both;
 }
 
 .locked-tease {
   margin: 0 auto;
-  max-width: 28ch;
+  max-width: 30ch;
   font-family: var(--display);
   font-style: italic;
   font-weight: 400;
-  font-size: 1.45rem;
+  font-size: 1.4rem;
   line-height: 1.4;
-  color: rgba(255, 200, 185, 0.85);
+  color: var(--wine);
   animation: locked-tease-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .locked-countdown {
-  margin-top: 36px;
+  margin-top: 32px;
   font-family: var(--sans);
-  font-size: 0.78rem;
-  letter-spacing: 0.1em;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: rgba(184, 51, 74, 0.5);
-  animation: locked-text-in 0.9s 0.2s ease both;
+  color: rgba(90, 58, 66, 0.55);
+  animation: locked-text-in 0.9s 0.18s ease both;
 }
 
 @keyframes seal-breathe {
-  0%, 100% { transform: scale(1) rotate(-2deg); opacity: 0.82; }
-  50%       { transform: scale(1.05) rotate(-2deg); opacity: 1; }
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50%       { transform: scale(1.04); opacity: 1; }
 }
 
 @keyframes seal-tap {
-  0%   { transform: scale(1) rotate(-2deg); }
-  30%  { transform: scale(0.92) rotate(-2deg); }
-  65%  { transform: scale(1.08) rotate(-2deg); }
-  100% { transform: scale(1) rotate(-2deg); animation-name: seal-breathe; }
+  0%   { transform: scale(1); }
+  28%  { transform: scale(0.93); }
+  62%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
 }
 
 @keyframes locked-text-in {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes locked-tease-in {
-  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  from { opacity: 0; transform: scale(0.97) translateY(5px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
