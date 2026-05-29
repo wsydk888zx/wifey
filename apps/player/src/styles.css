@@ -716,10 +716,10 @@ a {
 
 .inner-lining {
   position: absolute;
-  top: 6px;
-  left: 10px;
-  right: 10px;
-  height: 53%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 54%;
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   background:
     radial-gradient(ellipse at 50% 18%, rgba(210, 40, 70, 0.32), transparent 48%),
