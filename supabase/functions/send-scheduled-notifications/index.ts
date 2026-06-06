@@ -166,14 +166,25 @@ Deno.serve(async () => {
   const days: any[] = storyRow.days ?? [];
   const now = new Date();
 
+  // Dynamic per-envelope unlock times (e.g. confession hourly drops on Day 2).
+  // Used when the envelope has no static scheduledAt baked into the story.
+  const { data: unlockRows } = await supabase
+    .from('envelope_unlocks')
+    .select('envelope_id, unlock_at');
+  const unlocksMap = new Map<string, string>(
+    (unlockRows || []).map((row: any) => [row.envelope_id, row.unlock_at]),
+  );
+
   // Collect all envelopes that should have fired by now and haven't been sent yet
   const due: Array<{ envelopeId: string; title: string; body: string; fireAt: Date }> = [];
 
   for (const day of days) {
     const envelopes: any[] = day.envelopes ?? [];
     for (const env of envelopes) {
-      if (!env?.scheduledAt || env?.notify === false) continue;
-      const fireAt = new Date(env.scheduledAt);
+      if (env?.notify === false) continue;
+      const effectiveScheduledAt = env?.scheduledAt || unlocksMap.get(env?.id);
+      if (!effectiveScheduledAt) continue;
+      const fireAt = new Date(effectiveScheduledAt);
       if (fireAt > now) continue;
 
       // Check if already sent
@@ -205,9 +216,11 @@ Deno.serve(async () => {
       const reminderStart = new Date(env.reminderAt);
       if (reminderStart > now) continue;
 
-      // Only send reminders for envelopes that are unlocked (scheduledAt has passed or is null)
-      if (env.scheduledAt) {
-        const scheduledTime = new Date(env.scheduledAt);
+      // Only send reminders for envelopes that are unlocked (scheduledAt has passed or is null).
+      // Honors both static envelope.scheduledAt and dynamic envelope_unlocks entries.
+      const reminderEffective = env.scheduledAt || unlocksMap.get(env?.id);
+      if (reminderEffective) {
+        const scheduledTime = new Date(reminderEffective);
         if (scheduledTime > now) continue;
       }
 

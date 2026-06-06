@@ -100,7 +100,7 @@ function normalizeEnvelope(
   next.label = next.label || `Day ${dayNumber} · ${next.timeLabel}`;
   next.sealMotif = next.sealMotif || String(dayNumber);
   next.scheduledAt = next.scheduledAt || null;
-  next.notify = next.notify === false ? false : !!next.scheduledAt;
+  next.notify = next.notify === true ? true : next.notify === false ? false : !!next.scheduledAt;
   next.reminderAt = next.reminderAt || null;
   next.reminderIntervalMinutes = next.reminderIntervalMinutes || null;
   next.reminderMaxCount = next.reminderMaxCount ?? 0;

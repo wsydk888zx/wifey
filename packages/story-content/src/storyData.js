@@ -157,34 +157,34 @@ export const storyContent = {
     },
     {
       "dayNumber": 2,
-      "title": "Digital Voyeurism",
-      "theme": "Visual longing and the psychological weight of being watched.",
+      "title": "Confession",
+      "theme": "Truth as offering. The intimacy of being heard, and the discipline of being seen.",
       "envelopes": [
         {
           "id": "2A",
           "timeLabel": "Morning",
-          "label": "The Gift",
-          "intro": "You wake to flowers waiting for you. A dozen of them—chosen specifically because I know what you like. They sit on the counter, beautiful and deliberate.\n\nBut that's not all. There's also a package. Unmarked. When you open it, you'll understand immediately what it is. \n\nThe flowers are a promise. The package is a preview of what's coming.",
+          "label": "The Confession",
+          "intro": "A package waits at your door. Flowers on the counter, chosen because I know exactly what you like. And beneath them, a smaller box — you'll know what it is the second you open it. The vibrator is for tonight. Keep it close. We'll get there.\n\nBut first — before the toy, before the evening — something else. Something that belongs only to truth.\n\nFor the next five hours, we confess. One every hour. Either you receive five of mine, or you give me five of yours. Each one read, felt, and answered before the next is allowed to arrive.\n\nThe clock begins the moment you choose.",
           "choices": [
             {
               "id": "2A-1",
-              "title": "The Luxury Toy",
-              "hint": "Designed for pleasure, positioned for connection",
+              "title": "Receive",
+              "hint": "Five of mine. One every hour. All for you.",
               "card": {
-                "heading": "The Luxury Toy",
-                "body": "The vibrator I sent is high-end and precisely engineered—a gift that knows exactly what you need. It builds slowly, deliberately, designed to take you exactly where I want you to go.\\n\\nKeep it close all day. Think about it. Feel the weight of it in your hand. Tonight at 9:00, I want you to use it for me on camera. Use the phone stand I included—place it so I can see your face, nothing else. Let me watch you surrender to the pleasure I'm giving you from a distance. That's where my control lives: in the intimacy of being seen by me, completely.",
-                "rule": "Keep it close all day. Tonight at 9:00 PM sharp, use it on camera with the phone stand positioned on your face only.",
+                "heading": "Receive",
+                "body": "For the next five hours, you are mine to confess to. One memory at a time. One truth at a time. Delivered straight to you on the hour, every hour, until I've handed you all five.\n\nI'm going to tell you the moments that stay with me. The ones I replay. The ones I can still feel. The ones that made you mine forever — not because I claimed you, but because of what you did in them.\n\nYou will read each one the second it arrives. You will sit with it. You will let it land. And only when you've acknowledged what I've given you will the next confession be allowed to come.\n\nFive hours. Five truths. All of them yours.",
+                "rule": "Open each confession the moment it arrives. Read it fully. Acknowledge it. Only then will the next one come.",
                 "inputs": []
               }
             },
             {
               "id": "2A-2",
-              "title": "The Versatile Companion",
-              "hint": "Your hands, your control, twice",
+              "title": "Give",
+              "hint": "Five of yours. One every hour. All for me.",
               "card": {
-                "heading": "The Versatile Companion",
-                "body": "This one is different—you control everything. The rhythm, the speed, the intensity. It responds to every touch of your hands.\\n\\nKeep it close all day. Feel its weight, its potential. There's a stand for the phone too—use it. Position it so I can see only your face as you touch yourself.\\n\\nBy 9:00 PM, you'll be ready. And since you didn't choose the other option, you're going twice for me tonight. Your hands, your pleasure, twice. I'll be watching every expression as you give yourself to me on camera.",
-                "rule": "Keep it with you all day. At 9:00 PM sharp, use the stand for your phone focused on your face only. Touch yourself twice on camera for me.",
+                "heading": "Give",
+                "body": "For the next five hours, I want your truth. One every hour. Five of your favorite moments with me — the times that lit you up, the things you replay when you're alone, the memories that still make your breath catch.\n\nI'm not asking for the easy ones. I want the ones you can still feel. The ones with weight. The ones that marked you.\n\nWhen the notification arrives, you'll open the card and you'll type it for me. Be specific. Be honest. Don't dress it up — I want the moment as you actually remember it. The room, the light, the smell of it, the sound of it, the look on my face, the look on yours.\n\nEach one unlocks the next.",
+                "rule": "Type each confession in full when the notification arrives. Specific. Honest. Unfiltered. Each one unlocks the next.",
                 "inputs": []
               }
             }
@@ -192,41 +192,368 @@ export const storyContent = {
           "slot": "slot-1",
           "sealMotif": "2",
           "branchOnly": false,
-          "choicesHeading": "What You'll Do With It",
-          "choicesIntro": "You hold the weight of my gift in your hands. The question isn't whether you'll use it—it's when, and how you'll let me know."
+          "choicesHeading": "Truth, Hourly",
+          "choicesIntro": "Confession lives between us today. The only question is which direction it flows."
         },
         {
-          "id": "2B",
-          "timeLabel": "Evening",
-          "label": "The Call",
+          "id": "2A-R-1",
+          "timeLabel": "Confession 1 of 5",
+          "label": "The Jacuzzi",
           "intro": "",
           "choices": [
             {
-              "id": "2B-1",
-              "title": "The Confession",
-              "hint": "Let me hear you",
+              "id": "2A-R-1-ack",
+              "title": "I read this. I felt it.",
+              "hint": "",
               "card": {
-                "heading": "The Confession",
-                "body": "I want to hear you. Not screaming—I want to hear your breath change. The small sounds you make when you're close. Whispered words if they come. I'm watching your face, listening to every nuance of how the toy affects you.\n\nTalk to me. Tell me what you're feeling. Make me hear how much you need this. The words are mine to collect.",
-                "rule": "Talk to me. Let me hear every breath, every word. Nothing is too much.",
-                "inputs": []
-              }
-            },
-            {
-              "id": "2B-2",
-              "title": "The Silence",
-              "hint": "Your face tells me everything",
-              "card": {
-                "heading": "The Silence",
-                "body": "Don't speak. Just let me watch. Your face tells me everything—when you're building, when you're close, the exact moment you lose control.\n\nI'm reading every expression. Every flutter of your eyes. Every time your breath catches. By the time you finish, I'll know your body better than you do—because I'll have memorized exactly how your face responds to every sensation.",
-                "rule": "Don't speak. Let your face do everything. I'll be watching every detail.",
+                "heading": "The Jacuzzi",
+                "body": "The water was hot. You were hotter. I can still feel exactly how horny I was that night — the kind of want that doesn't ask permission, doesn't wait, doesn't negotiate. Steam in the air. Jets humming under us. Your skin slick and warm against mine and my hands already deciding where they were going next.\n\nI wasn't thinking. I was taking. And you let me — because you wanted it just as badly, because you were already there with me, already mine. I can close my eyes right now and feel every second of it. That's how deep it went. That's how badly I needed you.",
+                "rule": "Know that I still want you exactly like that. Every time.",
                 "inputs": []
               }
             }
           ],
           "slot": "slot-2",
           "sealMotif": "2",
-          "branchOnly": false
+          "branchOnly": true,
+          "branchGroup": "2A-receive",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "A confession is waiting for you.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2A-R-2",
+          "timeLabel": "Confession 2 of 5",
+          "label": "A Fucking Genius",
+          "intro": "",
+          "choices": [
+            {
+              "id": "2A-R-2-ack",
+              "title": "I read this. I felt it.",
+              "hint": "",
+              "card": {
+                "heading": "A Fucking Genius",
+                "body": "The first time I put you in the 3P, I knew I had you. Bound. Open. Helpless in a way nothing else had ever made you. I watched your face when it locked into place — the surrender, the heat, the exact moment your body understood what was about to happen to it.\n\nAnd then you said it. Three words I'll never forget. \"A fucking genius.\" You meant it. I could hear it in your voice — the wonder, the gratitude, the disbelief that I had found this for you. For us.\n\nI built that night around you. And you crowned me for it.",
+                "rule": "I'd do it all again, exactly like that, just to hear you say it one more time.",
+                "inputs": []
+              }
+            }
+          ],
+          "slot": "slot-3",
+          "sealMotif": "2",
+          "branchOnly": true,
+          "branchGroup": "2A-receive",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "The next one is here.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2A-R-3",
+          "timeLabel": "Confession 3 of 5",
+          "label": "The Way You Show It",
+          "intro": "",
+          "choices": [
+            {
+              "id": "2A-R-3-ack",
+              "title": "I read this. I felt it.",
+              "hint": "",
+              "card": {
+                "heading": "The Way You Show It to Me",
+                "body": "The way you offer your ass for my mouth — there is nothing in the world like it. No flinch. No second-guessing. No half-measure. You do it with the kind of confidence that takes my mind apart, and the kind of sincerity that makes my chest ache.\n\nYou know exactly what you want. You know exactly what I'm going to do. And you give it to me freely — not as a performance, not as a tease, but as a fact. *This is yours. Take it.*\n\nIt's one of the sexiest things you have ever done. It's one of the sexiest things anyone has ever done. I think about it constantly.",
+                "rule": "Don't ever stop. Don't ever doubt what it does to me.",
+                "inputs": []
+              }
+            }
+          ],
+          "slot": "slot-4",
+          "sealMotif": "2",
+          "branchOnly": true,
+          "branchGroup": "2A-receive",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "Another truth, just for you.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2A-R-4",
+          "timeLabel": "Confession 4 of 5",
+          "label": "Heels",
+          "intro": "",
+          "choices": [
+            {
+              "id": "2A-R-4-ack",
+              "title": "I read this. I felt it.",
+              "hint": "",
+              "card": {
+                "heading": "Heels",
+                "body": "Every time you fuck me in heels, my fantasy comes alive. Every single time. It's the simplest thing — a pair of shoes, the way they change your walk, the way they arch your back, the way they sharpen every line of you into something devastating.\n\nI had this picture in my head long before I ever met you. The woman who would wear them for me. Who would leave them on. Who would make me lose my breath with nothing but the sound of a heel on the floor. And then there's you. And it's real. Every fucking time.\n\nYou don't know what it does to me when I look down and see them still on. You are already perfect. The heels make you mythical.",
+                "rule": "Never stop wearing them for me.",
+                "inputs": []
+              }
+            }
+          ],
+          "slot": "slot-5",
+          "sealMotif": "2",
+          "branchOnly": true,
+          "branchGroup": "2A-receive",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "One more before the last.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2A-R-5",
+          "timeLabel": "Confession 5 of 5",
+          "label": "The Chair, The Old House",
+          "intro": "",
+          "choices": [
+            {
+              "id": "2A-R-5-ack",
+              "title": "I read this. I felt it.",
+              "hint": "",
+              "card": {
+                "heading": "The Chair, The Old House",
+                "body": "I can still smell your perfume. That's the first thing that comes back — before the rope, before the chair, before anything else. Then the look in your eyes. That specific look you only get when you are about to take something from me. Excitement. Hunger. A little disbelief at your own boldness.\n\nYou tied me to that chair in the upstairs bedroom and I gave myself to you completely. The light. The air. The way your breath sounded near my ear. The way your hands moved without a single hesitation. Every detail is still inside me. I can play it back like a film.\n\nThat night you owned me. Fully. And I let you — gladly, gratefully — and I'd let you again tomorrow if you asked.",
+                "rule": "Tie me up again. I never stopped wanting it.",
+                "inputs": []
+              }
+            }
+          ],
+          "slot": "slot-6",
+          "sealMotif": "2",
+          "branchOnly": true,
+          "branchGroup": "2A-receive",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "The last one. Read it slowly.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2A-G-1",
+          "timeLabel": "Confession 1 of 5",
+          "label": "The First",
+          "intro": "",
+          "choices": [
+            {
+              "id": "2A-G-1-submit",
+              "title": "Give it to me",
+              "hint": "",
+              "card": {
+                "heading": "The First",
+                "body": "Tell me about the first time you felt completely undone with me. Not the first time we had sex — the first time something snapped open in you that you didn't expect. Where were we? What were you wearing? What did I do that you weren't ready for?\n\nI want the specifics. The exact moment you realized you were already mine.",
+                "rule": "Type it in full. Specific. Don't summarize — describe.",
+                "inputs": [
+                  {
+                    "id": "2a_g_1_confession",
+                    "label": "Your confession",
+                    "type": "long_text",
+                    "required": true,
+                    "placeholder": "Type it the way you remember it...",
+                    "helpText": ""
+                  }
+                ]
+              }
+            }
+          ],
+          "slot": "slot-7",
+          "sealMotif": "2",
+          "branchOnly": true,
+          "branchGroup": "2A-give",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "Your first confession. Open it.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2A-G-2",
+          "timeLabel": "Confession 2 of 5",
+          "label": "The Replay",
+          "intro": "",
+          "choices": [
+            {
+              "id": "2A-G-2-submit",
+              "title": "Give it to me",
+              "hint": "",
+              "card": {
+                "heading": "The Replay",
+                "body": "Tell me the night you replay the most. The one your mind goes back to when you're alone. The one that still changes your breath when you think about it.\n\nWhy that one? What about it lives in you? Tell me everything — the room, the light, the way it started, the way it broke.",
+                "rule": "Type it in full. Sensory details — the look, the smell, the sound, the feel.",
+                "inputs": [
+                  {
+                    "id": "2a_g_2_confession",
+                    "label": "Your confession",
+                    "type": "long_text",
+                    "required": true,
+                    "placeholder": "Type it the way you remember it...",
+                    "helpText": ""
+                  }
+                ]
+              }
+            }
+          ],
+          "slot": "slot-8",
+          "sealMotif": "2",
+          "branchOnly": true,
+          "branchGroup": "2A-give",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "Another one. Tell me.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2A-G-3",
+          "timeLabel": "Confession 3 of 5",
+          "label": "The Edge",
+          "intro": "",
+          "choices": [
+            {
+              "id": "2A-G-3-submit",
+              "title": "Give it to me",
+              "hint": "",
+              "card": {
+                "heading": "The Edge",
+                "body": "Tell me about a time you surprised yourself. A moment you went further than you thought you would. Maybe you said something out loud you'd never said. Maybe you did something you didn't know you wanted.\n\nWhat was it? What pulled it out of you? And how did it feel afterward, when the wave passed and you realized what you'd just done?",
+                "rule": "Type it in full. The point is what surprised you — name it.",
+                "inputs": [
+                  {
+                    "id": "2a_g_3_confession",
+                    "label": "Your confession",
+                    "type": "long_text",
+                    "required": true,
+                    "placeholder": "Type it the way you remember it...",
+                    "helpText": ""
+                  }
+                ]
+              }
+            }
+          ],
+          "slot": "slot-9",
+          "sealMotif": "2",
+          "branchOnly": true,
+          "branchGroup": "2A-give",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "Surprise me. Open it.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2A-G-4",
+          "timeLabel": "Confession 4 of 5",
+          "label": "The Secret",
+          "intro": "",
+          "choices": [
+            {
+              "id": "2A-G-4-submit",
+              "title": "Give it to me",
+              "hint": "",
+              "card": {
+                "heading": "The Secret",
+                "body": "Tell me a moment that lives only between us. Something I might not even know meant as much to you as it did. A glance, a touch, a sentence I said — something small that became enormous in your mind.\n\nTell me what it was. Tell me why it stuck. I want to see this through your eyes.",
+                "rule": "Type it in full. The size of the moment doesn't matter — the weight does.",
+                "inputs": [
+                  {
+                    "id": "2a_g_4_confession",
+                    "label": "Your confession",
+                    "type": "long_text",
+                    "required": true,
+                    "placeholder": "Type it the way you remember it...",
+                    "helpText": ""
+                  }
+                ]
+              }
+            }
+          ],
+          "slot": "slot-10",
+          "sealMotif": "2",
+          "branchOnly": true,
+          "branchGroup": "2A-give",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "One that lives only between us.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2A-G-5",
+          "timeLabel": "Confession 5 of 5",
+          "label": "The Fantasy",
+          "intro": "",
+          "choices": [
+            {
+              "id": "2A-G-5-submit",
+              "title": "Give it to me",
+              "hint": "",
+              "card": {
+                "heading": "The Fantasy",
+                "body": "For the last one — the one you haven't told me. A favorite memory that has a sequel in your head. The scene that has played in your imagination since it happened, where it goes further than it actually went.\n\nDescribe the real moment. Then describe how it ends in your head when no one's watching. Hand me both halves.",
+                "rule": "Type it in full. The real, and the imagined extension. Both.",
+                "inputs": [
+                  {
+                    "id": "2a_g_5_confession",
+                    "label": "Your confession",
+                    "type": "long_text",
+                    "required": true,
+                    "placeholder": "Type it the way you remember it...",
+                    "helpText": ""
+                  }
+                ]
+              }
+            }
+          ],
+          "slot": "slot-11",
+          "sealMotif": "2",
+          "branchOnly": true,
+          "branchGroup": "2A-give",
+          "notificationTitle": "Your Master",
+          "notify": true,
+          "notificationBody": "The last one. The fantasy.",
+          "lockedHeading": "Soon.",
+          "lockedBody": "Come back at {time}."
+        },
+        {
+          "id": "2B",
+          "timeLabel": "Evening",
+          "label": "The Call",
+          "intro": "9 PM. The vibrator I sent you this morning has been waiting. So have I.\n\nSet the phone on the stand. Position it carefully. There are two ways tonight goes. Pick one.",
+          "choices": [
+            {
+              "id": "2B-1",
+              "title": "Less",
+              "hint": "Your face only. The rest stays mine to imagine.",
+              "card": {
+                "heading": "Less",
+                "body": "Frame the phone on your face. Nothing else. Just your eyes, your mouth, the flush at your collarbone — the parts of you that betray every wave that moves through your body.\n\nI want to read everything from your face. Every breath. Every flicker behind your eyes. Every soft sound your lips give up without your permission. The rest stays mine to imagine.\n\nThere is a discipline to this. A restraint. *Less* is its own kind of intensity.",
+                "rule": "Phone framed on your face only. Use the toy. Let your face tell me everything.",
+                "inputs": []
+              }
+            },
+            {
+              "id": "2B-2",
+              "title": "More",
+              "hint": "All of you. Lit. Visible. Offered.",
+              "card": {
+                "heading": "More",
+                "body": "Frame the phone wide. All of you in view. Not a sliver — every inch. Your face, your chest, your hips, your thighs, the arch of your back, every line that moves when the pleasure does.\n\nI want to watch you completely. The toy, your hands, the way your body answers — all of it, lit and visible and offered to me without a single shadow to hide behind. This is not performance. This is permission. You are showing me what no one else gets to see, and you are doing it on purpose.\n\nTonight you are seen. Fully. Beautifully. Without reservation. And I am yours — undivided — for every second of it.",
+                "rule": "Phone framed wide. Your full body in view. Use the toy. Hide nothing. Let me see all of you.",
+                "inputs": []
+              }
+            }
+          ],
+          "slot": "slot-12",
+          "sealMotif": "2",
+          "branchOnly": false,
+          "choicesHeading": "What I See",
+          "choicesIntro": "The toy is the same. The pleasure is the same. The only thing that changes tonight is how much of you I get to look at while it happens."
         }
       ],
       "day": 2,
@@ -581,6 +908,39 @@ export const storyContent = {
     "text": "The house is quiet. The weekend is over. She's sleeping, marked in ways she'll feel with every movement for the next few days. You're already thinking about next time.\n\nBecause now she knows exactly how far this can go.\n\nAnd you're both counting the days until you can start again."
   },
   "defaultFlowMap": {
-    "rules": []
+    "rules": [
+      {
+        "id": "2A-1-to-receive",
+        "sourceChoiceId": "2A-1",
+        "sourceFieldId": "",
+        "operator": "always",
+        "value": "",
+        "targetEnvelopeId": "2A-R-1"
+      },
+      {
+        "id": "2A-2-to-give",
+        "sourceChoiceId": "2A-2",
+        "sourceFieldId": "",
+        "operator": "always",
+        "value": "",
+        "targetEnvelopeId": "2A-G-1"
+      },
+      {
+        "id": "2A-R-5-to-2B",
+        "sourceChoiceId": "2A-R-5-ack",
+        "sourceFieldId": "",
+        "operator": "always",
+        "value": "",
+        "targetEnvelopeId": "2B"
+      },
+      {
+        "id": "2A-G-5-to-2B",
+        "sourceChoiceId": "2A-G-5-submit",
+        "sourceFieldId": "",
+        "operator": "always",
+        "value": "",
+        "targetEnvelopeId": "2B"
+      }
+    ]
   }
 };

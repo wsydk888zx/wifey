@@ -108,8 +108,23 @@ function isEnvelopeActive(item, activatedDayIds) {
   );
 }
 
-function isEnvelopeUnlocked(envelope, now = new Date()) {
-  return !envelope.scheduledAt || new Date(envelope.scheduledAt) <= now;
+function getEffectiveScheduledAt(envelope, unlocksMap) {
+  if (envelope?.scheduledAt) return envelope.scheduledAt;
+  return unlocksMap?.get(envelope?.id) || null;
+}
+
+function isEnvelopeUnlocked(envelope, unlocksMap, now = new Date()) {
+  const scheduledAt = getEffectiveScheduledAt(envelope, unlocksMap);
+  return !scheduledAt || new Date(scheduledAt) <= now;
+}
+
+async function fetchEnvelopeUnlocks() {
+  if (!supabase) return new Map();
+  const { data, error } = await supabase
+    .from('envelope_unlocks')
+    .select('envelope_id, unlock_at');
+  if (error || !data) return new Map();
+  return new Map(data.map((row) => [row.envelope_id, row.unlock_at]));
 }
 
 function matchesBranchRule(rule, responses) {
@@ -456,6 +471,30 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
     () => initialState?.selectedChoices ?? {},
   );
   const [lockRefresh, setLockRefresh] = useState(0);
+  const [envelopeUnlocks, setEnvelopeUnlocks] = useState(() => new Map());
+
+  // Pull dynamic envelope unlock times (e.g. confession hourly drops) from Supabase
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      const map = await fetchEnvelopeUnlocks();
+      if (!cancelled) setEnvelopeUnlocks(map);
+    };
+    load();
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    const onFocus = () => load();
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
 
   useEffect(() => {
     if (!historyOpen) return undefined;
@@ -600,7 +639,8 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
 
   const env = current?.envelope || null;
   const envDisplay = current ? envelopeDisplay.get(current.envelopeId) : null;
-  const isCurrentLocked = env && !isEnvelopeUnlocked(env);
+  const effectiveScheduledAt = env ? getEffectiveScheduledAt(env, envelopeUnlocks) : null;
+  const isCurrentLocked = env && !isEnvelopeUnlocked(env, envelopeUnlocks);
   const chosenChoice = env?.choices?.find((choice) => choice.id === chosen) || null;
   const responseKey = chosenChoice ? `${env.id}::${chosenChoice.id}` : null;
   const currentResponses = responseKey ? formResponses[responseKey] || {} : {};
@@ -616,6 +656,19 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
     setEnvState('opening');
     window.setTimeout(() => setEnvState('opened'), 1200);
   };
+
+  // Single-choice envelopes (e.g. confessions) skip the choice picker
+  useEffect(() => {
+    if (
+      envState === 'opened' &&
+      !chosen &&
+      env &&
+      Array.isArray(env.choices) &&
+      env.choices.length === 1
+    ) {
+      setChosen(env.choices[0].id);
+    }
+  }, [envState, chosen, env?.id]);
 
   const handleChoose = (choiceId) => setChosen(choiceId);
   const handleReselect = () => setChosen(null);
@@ -638,6 +691,27 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
 
   const handleComplete = () => {
     if (!env || !chosenChoice) return;
+
+    // When she picks the confession branch, schedule 5 hourly drops from now
+    if ((chosenChoice.id === '2A-1' || chosenChoice.id === '2A-2') && supabase) {
+      const prefix = chosenChoice.id === '2A-1' ? '2A-R' : '2A-G';
+      const startMs = Date.now();
+      const HOUR_MS = 60 * 60 * 1000;
+      const rows = [1, 2, 3, 4, 5].map((n) => ({
+        envelope_id: `${prefix}-${n}`,
+        unlock_at: new Date(startMs + (n - 1) * HOUR_MS).toISOString(),
+      }));
+      supabase
+        .from('envelope_unlocks')
+        .upsert(rows, { onConflict: 'envelope_id' })
+        .then(() => {
+          setEnvelopeUnlocks((prev) => {
+            const next = new Map(prev);
+            rows.forEach((row) => next.set(row.envelope_id, row.unlock_at));
+            return next;
+          });
+        });
+    }
 
     const textConfig = chosenChoice.card?.realText;
     if (textConfig?.enabled) {
@@ -832,7 +906,7 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
           {isCurrentLocked ? (
             <LockedView
               key={lockRefresh}
-              envelope={env}
+              envelope={{ ...env, scheduledAt: effectiveScheduledAt }}
               storySettings={storySettings}
               onUnlock={handleEnvelopeUnlock}
             />
