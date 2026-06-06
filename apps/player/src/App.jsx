@@ -114,7 +114,7 @@ function isEnvelopeUnlocked(envelope, completedAtMap = {}, previousEnvelopeId = 
   }
   if (envelope.unlockOffsetMinutes && previousEnvelopeId) {
     const prevCompletedAt = completedAtMap[previousEnvelopeId];
-    if (!prevCompletedAt) return true;
+    if (!prevCompletedAt) return false; // previous not done → this one stays locked
     return new Date(prevCompletedAt).getTime() + envelope.unlockOffsetMinutes * 60_000 <= now.getTime();
   }
   return true;
