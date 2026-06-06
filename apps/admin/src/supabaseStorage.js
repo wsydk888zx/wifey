@@ -180,6 +180,45 @@ export async function saveAdminDraft(supabase, draft) {
  * Publish the current draft to make it live.
  * Creates an immutable version in story_versions and sets is_published = true.
  */
+// Notification + gating fields that must survive every republish.
+// The admin UI has no inputs for these, so the draft never carries them —
+// we pull them from the previously-published story and merge them forward.
+const CARRY_NOTIF_FIELDS = [
+  'notify', 'notificationTitle', 'notificationBody',
+  'reminderTitle', 'reminderBody', 'reminderIntervalMinutes',
+  'reminderMaxCount', 'unlockOffsetMinutes', 'branchOnly',
+];
+
+/**
+ * Merge saved notification config from prevDays into freshDays.
+ * Fields in CARRY_NOTIF_FIELDS are taken from prevDays when the fresh
+ * envelope doesn't already define them. scheduledAt is always nulled out
+ * (absolute timestamps must never carry forward).
+ */
+function mergeNotifConfig(freshDays, prevDays) {
+  // Build envelope-id → notification fields map from previous published story
+  const notifByEnvId = {};
+  for (const day of prevDays) {
+    for (const env of (day.envelopes || [])) {
+      if (!env.id) continue;
+      const notif = {};
+      for (const f of CARRY_NOTIF_FIELDS) {
+        if (env[f] !== undefined) notif[f] = env[f];
+      }
+      if (Object.keys(notif).length > 0) notifByEnvId[env.id] = notif;
+    }
+  }
+
+  return freshDays.map(day => ({
+    ...day,
+    envelopes: (day.envelopes || []).map(env => {
+      const saved = notifByEnvId[env.id];
+      // saved provides the base; env's own values win over it; scheduledAt always null
+      return { ...(saved || {}), ...env, scheduledAt: null };
+    }),
+  }));
+}
+
 export async function publishStory(supabase, draft, changeNotes = '') {
   if (!supabase || !draft.storyId) {
     throw new Error('Cannot publish: no story ID');
@@ -199,6 +238,25 @@ export async function publishStory(supabase, draft, changeNotes = '') {
     const story = stories;
     const newVersionNumber = (story.version_number || 0) + 1;
 
+    // ── Carry notification config forward from the current published story ──
+    // Pull notification fields before we unpublish the current row.
+    // This prevents every republish from wiping push notification config.
+    let mergedDays = story.days.map(day => ({
+      ...day,
+      envelopes: (day.envelopes || []).map(env => ({ ...env, scheduledAt: null })),
+    }));
+
+    const { data: prevPublished } = await supabase
+      .from('stories')
+      .select('days')
+      .eq('is_published', true)
+      .maybeSingle();
+
+    if (prevPublished?.days) {
+      mergedDays = mergeNotifConfig(mergedDays, prevPublished.days);
+    }
+    // ── End notification carry ─────────────────────────────────────────────
+
     // Create immutable version record
     const { data: versionData, error: versionError } = await supabase
       .from('story_versions')
@@ -206,7 +264,7 @@ export async function publishStory(supabase, draft, changeNotes = '') {
         {
           story_id: story.id,
           prologue: story.prologue,
-          days: story.days,
+          days: mergedDays,
           flow_map: story.flow_map,
           version_number: newVersionNumber,
           change_notes: changeNotes || 'Published version',
@@ -226,7 +284,7 @@ export async function publishStory(supabase, draft, changeNotes = '') {
 
     if (unpublishError) throw unpublishError;
 
-    // Mark this draft as the new published story
+    // Mark this draft as the new published story, with notification config merged in
     const publishedAt = new Date().toISOString();
     const { error: publishError } = await supabase
       .from('stories')
@@ -234,17 +292,19 @@ export async function publishStory(supabase, draft, changeNotes = '') {
         is_published: true,
         published_at: publishedAt,
         version_number: newVersionNumber,
+        days: mergedDays,
       })
       .eq('id', story.id);
 
     if (publishError) throw publishError;
 
-    // Create a fresh draft so the admin always has a working draft after publishing
+    // Create a fresh draft so the admin always has a working draft after publishing.
+    // The new draft also carries notification config so the next publish is safe too.
     const { data: newDraft, error: draftError } = await supabase
       .from('stories')
       .insert([{
         prologue: story.prologue,
-        days: story.days,
+        days: mergedDays,
         flow_map: story.flow_map,
         is_published: false,
         version_number: newVersionNumber,
