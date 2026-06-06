@@ -57,7 +57,14 @@ export const storyContent = {
           ],
           "slot": "slot-1",
           "sealMotif": "1",
-          "branchOnly": false
+          "branchOnly": false,
+          "notify": true,
+          "notificationTitle": "Something is waiting for you",
+          "notificationBody": "Good morning. Your first envelope is sealed and addressed to you — a mark you'll wear for five days. Open it alone.",
+          "reminderTitle": "Still waiting, love",
+          "reminderBody": "Your morning envelope hasn't been opened yet. It's patient — but it shouldn't wait much longer.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         },
         {
           "id": "1B",
@@ -141,7 +148,17 @@ export const storyContent = {
           "slot": "slot-2",
           "sealMotif": "1",
           "branchOnly": false,
-          "unlockOffsetMinutes": 360
+          "scheduledAt": "2026-05-08T02:00:00Z",
+          "lockedHeading": "Not yet.",
+          "lockedBody": "Come back at {time}.",
+          "unlockOffsetMinutes": 720,
+          "notify": true,
+          "notificationTitle": "Find somewhere soft tonight",
+          "notificationBody": "Evening, darling. The mark you chose this morning is against your skin. Now disappear somewhere quiet — couch, bed, or patio. A sealed letter is waiting for you.",
+          "reminderTitle": "Your evening envelope is waiting",
+          "reminderBody": "Still haven't opened it. Find a quiet corner and open your evening envelope — the story doesn't begin without you.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         }
       ],
       "day": 1,
@@ -190,9 +207,16 @@ export const storyContent = {
           "slot": "slot-1",
           "sealMotif": "2",
           "branchOnly": false,
-          "unlockOffsetMinutes": 720,
           "choicesHeading": "What You'll Do With It",
-          "choicesIntro": "You hold the weight of my gift in your hands. The question isn't whether you'll use it—it's when, and how you'll let me know."
+          "choicesIntro": "You hold the weight of my gift in your hands. The question isn't whether you'll use it—it's when, and how you'll let me know.",
+          "unlockOffsetMinutes": 720,
+          "notify": true,
+          "notificationTitle": "A delivery arrived this morning",
+          "notificationBody": "Wake up, love. Flowers are waiting — and something else beneath them. Open the package alone, read the note carefully. Tonight has a specific time written into it.",
+          "reminderTitle": "Don't forget the morning package",
+          "reminderBody": "Your morning envelope is still sealed. There's something inside you'll need before tonight — open it before the day gets away from you.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         },
         {
           "id": "2B",
@@ -226,7 +250,14 @@ export const storyContent = {
           "slot": "slot-2",
           "sealMotif": "2",
           "branchOnly": false,
-          "unlockOffsetMinutes": 360
+          "unlockOffsetMinutes": 720,
+          "notify": true,
+          "notificationTitle": "Tonight's instructions are ready",
+          "notificationBody": "You know what tonight is. What you chose this morning comes with a cost — and 9:00 PM is when you pay it. Open your evening envelope.",
+          "reminderTitle": "9:00 PM is getting closer",
+          "reminderBody": "Your evening envelope still hasn't been opened, and tonight has a deadline built in. Don't let it pass.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         }
       ],
       "day": 2,
@@ -286,9 +317,16 @@ export const storyContent = {
           "slot": "slot-1",
           "sealMotif": "3",
           "branchOnly": false,
-          "unlockOffsetMinutes": 720,
           "choicesHeading": "The First Surrender",
-          "choicesIntro": "Your restraint will be chosen now—but its purpose remains unspoken. What matters is what you can endure, what will make your skin burn with anticipation as the hours stretch forward."
+          "choicesIntro": "Your restraint will be chosen now—but its purpose remains unspoken. What matters is what you can endure, what will make your skin burn with anticipation as the hours stretch forward.",
+          "unlockOffsetMinutes": 720,
+          "notify": true,
+          "notificationTitle": "One decision before your day starts",
+          "notificationBody": "Good morning, darling. Before anything else, there's a single choice to make. It's the last decision that belongs entirely to you today — take your time, you'll be thinking about it all day.",
+          "reminderTitle": "Make your choice while it's still morning",
+          "reminderBody": "Your morning decision is still unmade. Whatever you pick will be waiting for you tonight — so choose now.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         },
         {
           "id": "3B",
@@ -322,7 +360,14 @@ export const storyContent = {
           "slot": "slot-2",
           "sealMotif": "3",
           "branchOnly": false,
-          "unlockOffsetMinutes": 360
+          "unlockOffsetMinutes": 720,
+          "notify": true,
+          "notificationTitle": "What you chose this morning is ready",
+          "notificationBody": "The restraints you picked are arranged. The blindfold is waiting. You already know what's about to happen to you — open your evening envelope.",
+          "reminderTitle": "Don't keep the evening waiting",
+          "reminderBody": "Your evening envelope is still sealed. Everything from this morning has been prepared. Open it.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         }
       ],
       "day": 3,
@@ -382,9 +427,16 @@ export const storyContent = {
           "slot": "slot-1",
           "sealMotif": "4",
           "branchOnly": false,
-          "unlockOffsetMinutes": 720,
           "choicesHeading": "What Calls to You",
-          "choicesIntro": "You stand before what's been left for you, feeling the weight of intention behind every detail. The choice is yours—but it's not really a choice at all, is it? It's what happens when someone knows exactly what they want you to become."
+          "choicesIntro": "You stand before what's been left for you, feeling the weight of intention behind every detail. The choice is yours—but it's not really a choice at all, is it? It's what happens when someone knows exactly what they want you to become.",
+          "unlockOffsetMinutes": 720,
+          "notify": true,
+          "notificationTitle": "A package arrived at your door",
+          "notificationBody": "Open it alone. Read the note before you touch anything else. Today is different — you're going somewhere, and how you look matters. Pack your bags.",
+          "reminderTitle": "The morning package is still waiting",
+          "reminderBody": "Your morning envelope has a dress and a destination inside. Open it — today has a lot of hours in it, and you'll want every one.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         },
         {
           "id": "4B",
@@ -429,7 +481,14 @@ export const storyContent = {
           "slot": "slot-2",
           "sealMotif": "4",
           "branchOnly": false,
-          "unlockOffsetMinutes": 360
+          "unlockOffsetMinutes": 720,
+          "notify": true,
+          "notificationTitle": "La Paloma is tonight",
+          "notificationBody": "You're dressed, you're stunning, and there's one more thing before we leave. Nothing complicated — just your mouth on mine, for as long as you choose. Open the envelope.",
+          "reminderTitle": "The evening's first move is yours",
+          "reminderBody": "Your evening envelope has exactly one beautiful rule in it. Open it.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         }
       ],
       "day": 4,
@@ -535,7 +594,14 @@ export const storyContent = {
           "slot": "slot-1",
           "sealMotif": "5",
           "branchOnly": false,
-          "unlockOffsetMinutes": 720
+          "unlockOffsetMinutes": 720,
+          "notify": true,
+          "notificationTitle": "Last morning. One final choice.",
+          "notificationBody": "Five days comes down to tonight. You can surrender the ending completely — or design your perfect night yourself. Open your last morning envelope and choose wisely.",
+          "reminderTitle": "Tonight is still unwritten",
+          "reminderBody": "Your final morning envelope is still sealed. Tonight is the last one — and how it ends depends entirely on what you decide right now.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         },
         {
           "id": "5B",
@@ -569,7 +635,14 @@ export const storyContent = {
           "slot": "slot-2",
           "sealMotif": "5",
           "branchOnly": false,
-          "unlockOffsetMinutes": 360
+          "unlockOffsetMinutes": 720,
+          "notify": true,
+          "notificationTitle": "No more holding back",
+          "notificationBody": "Everything you've been imagining since day one — it all happens tonight. Five days of waiting is over. Open your final envelope.",
+          "reminderTitle": "The last envelope is waiting for you",
+          "reminderBody": "Your final evening envelope is still sealed. Everything you've earned over five days is behind that seal. Open it.",
+          "reminderIntervalMinutes": 30,
+          "reminderMaxCount": 4
         }
       ],
       "day": 5,
