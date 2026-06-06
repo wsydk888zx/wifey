@@ -630,6 +630,10 @@ function AdminApp() {
   const [aiDraftError, setAiDraftError] = useState('');
   const [aiDraftLoading, setAiDraftLoading] = useState(false);
   const [playerResponses, setPlayerResponses] = useState(null);
+  const [notifSettings, setNotifSettings] = useState(null);
+  const [notifBusy, setNotifBusy] = useState(false);
+  const [notifSubCount, setNotifSubCount] = useState(null);
+  const [sendNowEnvelopeId, setSendNowEnvelopeId] = useState('');
 
   // Load draft from Supabase on mount
   useEffect(() => {
@@ -706,6 +710,57 @@ function AdminApp() {
 
     return () => supabase.removeChannel(channel);
   }, []);
+
+  // Load notification control settings + subscriber count (Mission Control)
+  useEffect(() => {
+    if (!supabase) return undefined;
+    let cancelled = false;
+    (async () => {
+      const { data: s } = await supabase
+        .from('notification_settings')
+        .select('paused, anchor_at, shift_minutes')
+        .eq('id', 'main')
+        .maybeSingle();
+      if (!cancelled) setNotifSettings(s || { paused: true, anchor_at: null, shift_minutes: 0 });
+      const { count } = await supabase
+        .from('push_subscriptions')
+        .select('id', { count: 'exact', head: true });
+      if (!cancelled) setNotifSubCount(count ?? 0);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const patchNotifSettings = async (patch) => {
+    if (!supabase) return;
+    setNotifBusy(true);
+    const { data, error } = await supabase
+      .from('notification_settings')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', 'main')
+      .select('paused, anchor_at, shift_minutes')
+      .maybeSingle();
+    setNotifBusy(false);
+    if (error) {
+      setNotice({ tone: 'error', text: `Notification update failed: ${error.message}` });
+      return;
+    }
+    setNotifSettings(data || { ...(notifSettings || {}), ...patch });
+    setNotice({ tone: 'success', text: 'Notification controls updated.' });
+  };
+
+  const handleSendNow = async () => {
+    if (!supabase || !sendNowEnvelopeId) return;
+    setNotifBusy(true);
+    const { error } = await supabase
+      .from('notification_commands')
+      .insert({ type: 'send_now', envelope_id: sendNowEnvelopeId });
+    setNotifBusy(false);
+    if (error) {
+      setNotice({ tone: 'error', text: `Send-now failed: ${error.message}` });
+      return;
+    }
+    setNotice({ tone: 'success', text: `Queued "${sendNowEnvelopeId}" — fires within ~60s.` });
+  };
 
   const content = draft.content;
   const flowMap = draft.flowMap;
@@ -3276,6 +3331,90 @@ function AdminApp() {
           </>
         ) : activeSection === 'Notifications' ? (
           <>
+            <section className="data-panel" aria-label="Mission control">
+              <div className="panel-heading">
+                <h3>Mission Control</h3>
+                <span className={`status-pill ${notifSettings && !notifSettings.paused ? 'success' : 'neutral'}`}>
+                  {notifSettings ? (notifSettings.paused ? 'Paused' : 'Live') : '…'}
+                </span>
+              </div>
+              <p style={{ padding: '0 0 12px', color: 'var(--ink-muted, #6b5c48)', fontSize: '0.85rem' }}>
+                Live levers for the push scheduler. Notifications anchor to when she starts and
+                advance at her pace — each envelope fires only after she finishes the previous one,
+                so nothing bursts and nothing races ahead of her.
+                {notifSubCount != null ? ` ${notifSubCount} device${notifSubCount === 1 ? '' : 's'} subscribed.` : ''}
+              </p>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                <div>
+                  <strong>Global pause</strong>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>Stops all automatic pushes. “Send one now” still works.</div>
+                </div>
+                <button
+                  type="button"
+                  className={`control-button ${notifSettings?.paused ? 'primary' : 'danger'}`}
+                  disabled={notifBusy || !notifSettings}
+                  onClick={() => patchNotifSettings({ paused: !notifSettings?.paused })}
+                >
+                  {notifSettings?.paused ? 'Resume notifications' : 'Pause all'}
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                <div>
+                  <strong>Her clock</strong>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>
+                    {notifSettings?.anchor_at
+                      ? `Anchored to ${new Date(notifSettings.anchor_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
+                      : 'Auto-anchors to when she first subscribes.'}
+                  </div>
+                </div>
+                <div className="button-row" style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="control-button" disabled={notifBusy} onClick={() => patchNotifSettings({ anchor_at: new Date().toISOString() })}>
+                    Start her clock now
+                  </button>
+                  {notifSettings?.anchor_at && (
+                    <button type="button" className="control-button" disabled={notifBusy} onClick={() => patchNotifSettings({ anchor_at: null })}>
+                      Reset to auto
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                <div>
+                  <strong>Shift everything</strong>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>Nudge the whole remaining schedule earlier or later.</div>
+                </div>
+                <div className="button-row" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button type="button" className="control-button" disabled={notifBusy} onClick={() => patchNotifSettings({ shift_minutes: (notifSettings?.shift_minutes || 0) - 60 })}>−1h</button>
+                  <span style={{ minWidth: 78, textAlign: 'center', fontVariantNumeric: 'tabular-nums' }}>
+                    {(() => { const m = notifSettings?.shift_minutes || 0; return m === 0 ? '0h' : `${m > 0 ? '+' : '−'}${Math.abs(m / 60)}h`; })()}
+                  </span>
+                  <button type="button" className="control-button" disabled={notifBusy} onClick={() => patchNotifSettings({ shift_minutes: (notifSettings?.shift_minutes || 0) + 60 })}>+1h</button>
+                  {(notifSettings?.shift_minutes || 0) !== 0 && (
+                    <button type="button" className="control-button" disabled={notifBusy} onClick={() => patchNotifSettings({ shift_minutes: 0 })}>Reset</button>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                <div>
+                  <strong>Send one now</strong>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>Fire a specific envelope’s push immediately (ignores pace and pause).</div>
+                </div>
+                <div className="button-row" style={{ display: 'flex', gap: 6 }}>
+                  <select value={sendNowEnvelopeId} onChange={(e) => setSendNowEnvelopeId(e.target.value)}>
+                    <option value="">Choose envelope…</option>
+                    {content.days.flatMap((d) => getDayEnvelopes(d)).filter((e) => e?.id).map((e) => (
+                      <option key={e.id} value={e.id}>{e.id} — {e.notificationTitle || e.label || e.timeLabel || e.id}</option>
+                    ))}
+                  </select>
+                  <button type="button" className="control-button primary" disabled={notifBusy || !sendNowEnvelopeId} onClick={handleSendNow}>Send now</button>
+                </div>
+              </div>
+            </section>
+
             <section className="data-panel" aria-labelledby="notifications-heading">
               <div className="panel-heading">
                 <h3 id="notifications-heading">Notification Schedule</h3>
@@ -3284,9 +3423,10 @@ function AdminApp() {
                 </span>
               </div>
               <p style={{ padding: '0 0 12px', color: 'var(--ink-muted, #6b5c48)', fontSize: '0.85rem' }}>
-                Notifications are driven by the <strong>Scheduled At</strong> field on each envelope in the Story editor.
-                Set a date/time there and check "Send notification" — then Publish. The Supabase Edge Function fires
-                the push at that time.
+                The <strong>Scheduled At</strong> times on each envelope now set the <em>spacing</em> between
+                pushes (the gap from one envelope to the next), not fixed calendar dates — the sequence anchors to
+                when she starts and advances at her pace. Edit each push’s title and body below, then Publish.
+                Use <strong>Mission Control</strong> above to pause, shift, re-anchor, or send one immediately.
               </p>
               <div className="notification-schedule-list">
                 {content.days.map((day, dayIndex) =>
