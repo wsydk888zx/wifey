@@ -141,9 +141,7 @@ export const storyContent = {
           "slot": "slot-2",
           "sealMotif": "1",
           "branchOnly": false,
-          "scheduledAt": "2026-05-08T02:00:00Z",
-          "lockedHeading": "Not yet.",
-          "lockedBody": "Come back at {time}."
+          "unlockOffsetMinutes": 360
         }
       ],
       "day": 1,
@@ -192,6 +190,7 @@ export const storyContent = {
           "slot": "slot-1",
           "sealMotif": "2",
           "branchOnly": false,
+          "unlockOffsetMinutes": 720,
           "choicesHeading": "What You'll Do With It",
           "choicesIntro": "You hold the weight of my gift in your hands. The question isn't whether you'll use it—it's when, and how you'll let me know."
         },
@@ -226,7 +225,8 @@ export const storyContent = {
           ],
           "slot": "slot-2",
           "sealMotif": "2",
-          "branchOnly": false
+          "branchOnly": false,
+          "unlockOffsetMinutes": 360
         }
       ],
       "day": 2,
@@ -286,6 +286,7 @@ export const storyContent = {
           "slot": "slot-1",
           "sealMotif": "3",
           "branchOnly": false,
+          "unlockOffsetMinutes": 720,
           "choicesHeading": "The First Surrender",
           "choicesIntro": "Your restraint will be chosen now—but its purpose remains unspoken. What matters is what you can endure, what will make your skin burn with anticipation as the hours stretch forward."
         },
@@ -320,7 +321,8 @@ export const storyContent = {
           ],
           "slot": "slot-2",
           "sealMotif": "3",
-          "branchOnly": false
+          "branchOnly": false,
+          "unlockOffsetMinutes": 360
         }
       ],
       "day": 3,
@@ -380,6 +382,7 @@ export const storyContent = {
           "slot": "slot-1",
           "sealMotif": "4",
           "branchOnly": false,
+          "unlockOffsetMinutes": 720,
           "choicesHeading": "What Calls to You",
           "choicesIntro": "You stand before what's been left for you, feeling the weight of intention behind every detail. The choice is yours—but it's not really a choice at all, is it? It's what happens when someone knows exactly what they want you to become."
         },
@@ -425,7 +428,8 @@ export const storyContent = {
           ],
           "slot": "slot-2",
           "sealMotif": "4",
-          "branchOnly": false
+          "branchOnly": false,
+          "unlockOffsetMinutes": 360
         }
       ],
       "day": 4,
@@ -530,7 +534,8 @@ export const storyContent = {
           ],
           "slot": "slot-1",
           "sealMotif": "5",
-          "branchOnly": false
+          "branchOnly": false,
+          "unlockOffsetMinutes": 720
         },
         {
           "id": "5B",
@@ -563,7 +568,8 @@ export const storyContent = {
           ],
           "slot": "slot-2",
           "sealMotif": "5",
-          "branchOnly": false
+          "branchOnly": false,
+          "unlockOffsetMinutes": 360
         }
       ],
       "day": 5,

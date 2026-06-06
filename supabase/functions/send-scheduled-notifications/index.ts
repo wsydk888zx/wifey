@@ -149,69 +149,144 @@ async function sendWebPush(
   return { ok: res.ok || res.status === 201, status: res.status };
 }
 
+// ── Scheduling helpers ────────────────────────────────────────────────────────
+
+const DEFAULT_OFFSET_MINUTES = 720; // 12h fallback when no cadence can be derived
+
+async function sendToAll(
+  subs: Array<{ endpoint: string; p256dh: string; auth: string }>,
+  payloadObj: Record<string, unknown>,
+): Promise<number> {
+  const payload = JSON.stringify(payloadObj);
+  let sentCount = 0;
+  for (const sub of subs) {
+    try {
+      const result = await sendWebPush(sub, payload);
+      if (result.ok) sentCount++;
+      if (result.status === 410 || result.status === 404) {
+        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+      }
+    } catch (_err) {
+      // skip failed subscription
+    }
+  }
+  return sentCount;
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
+//
+// Pace-adaptive scheduling: each envelope's push fires at
+//   (previous envelope's completed-at + offset)  — or the anchor, for the first —
+//   + a global shift. An envelope is never notified until she has finished the one
+//   before it, and never notified once she has already opened it. That makes bursts
+//   structurally impossible: at most the single "next" envelope can ever be due.
 
 Deno.serve(async () => {
-  // Read the published story to find envelopes with scheduledAt + notify
+  const now = new Date();
+
+  // 1. Global controls (singleton row; missing => safe defaults / paused).
+  const { data: settings } = await supabase
+    .from('notification_settings')
+    .select('paused, anchor_at, shift_minutes')
+    .eq('id', 'main')
+    .maybeSingle();
+  const paused: boolean = settings?.paused ?? true;
+  const shiftMs: number = (settings?.shift_minutes ?? 0) * 60_000;
+
+  // 2. Published story.
   const { data: storyRow, error: storyError } = await supabase
     .from('stories')
     .select('days')
     .eq('is_published', true)
     .single();
-
   if (storyError || !storyRow) {
     return new Response('No published story', { status: 200 });
   }
-
   const days: any[] = storyRow.days ?? [];
-  const now = new Date();
 
-  // Collect all envelopes that should have fired by now and haven't been sent yet
-  const due: Array<{ envelopeId: string; title: string; body: string; fireAt: Date }> = [];
+  // 3. Her progress — completion timestamps from the singleton player_state.
+  const { data: stateRow } = await supabase
+    .from('player_state')
+    .select('state')
+    .eq('id', 'main')
+    .maybeSingle();
+  const completedAtMap: Record<string, string> =
+    (stateRow?.state?.completedAtMap as Record<string, string>) ?? {};
 
+  // 4. Subscriptions (also used to auto-anchor to her first subscribe).
+  const { data: subscriptions } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth, created_at')
+    .order('created_at', { ascending: true });
+  const subs = subscriptions ?? [];
+
+  // 5. Anchor: explicit admin override, else when she first subscribed.
+  let anchorAt: Date | null = settings?.anchor_at ? new Date(settings.anchor_at) : null;
+  if (!anchorAt && subs.length) anchorAt = new Date(subs[0].created_at);
+
+  // 6. Ordered notifiable spine + each envelope's effective fire time.
+  type Node = { env: any; reachable: boolean; unlockAt: Date | null };
+  const computed: Node[] = [];
+  const envById: Record<string, any> = {};
+  let prev: any = null;
   for (const day of days) {
-    const envelopes: any[] = day.envelopes ?? [];
-    for (const env of envelopes) {
-      if (!env?.scheduledAt || env?.notify === false) continue;
-      const fireAt = new Date(env.scheduledAt);
-      if (fireAt > now) continue;
+    for (const env of (day.envelopes ?? [])) {
+      if (!env?.id) continue;
+      envById[env.id] = env;
+      if (env.notify === false) continue; // silent/branch envelopes never notify or anchor
 
-      // Check if already sent
+      let offsetMin = DEFAULT_OFFSET_MINUTES;
+      if (typeof env.unlockOffsetMinutes === 'number' && env.unlockOffsetMinutes > 0) {
+        offsetMin = env.unlockOffsetMinutes;
+      } else if (prev?.scheduledAt && env.scheduledAt) {
+        const delta = (new Date(env.scheduledAt).getTime() - new Date(prev.scheduledAt).getTime()) / 60_000;
+        if (delta > 0) offsetMin = delta;
+      }
+
+      let fireAt: Date | null = null;
+      let reachable = false;
+      if (!prev) {
+        fireAt = anchorAt;          // first envelope fires at the anchor
+        reachable = true;
+      } else if (completedAtMap[prev.id]) {
+        fireAt = new Date(new Date(completedAtMap[prev.id]).getTime() + offsetMin * 60_000);
+        reachable = true;
+      }
+      const unlockAt = fireAt ? new Date(fireAt.getTime() + shiftMs) : null;
+      computed.push({ env, reachable, unlockAt });
+      prev = env;
+    }
+  }
+
+  type Outgoing = { kind: 'initial' | 'reminder'; envelopeId: string; title: string; body: string; reminderIndex?: number };
+  const outgoing: Outgoing[] = [];
+
+  // 7. Automatic initials + reminders (suppressed entirely while paused).
+  if (!paused) {
+    for (const node of computed) {
+      const env = node.env;
+      if (!node.reachable || !node.unlockAt) continue;
+      if (completedAtMap[env.id]) continue;   // already opened — nothing to nudge
+      if (node.unlockAt > now) continue;       // not time yet
+
+      // Initial — once per envelope.
       const { data: sent } = await supabase
         .from('sent_notifications')
         .select('id')
         .eq('envelope_id', env.id)
         .maybeSingle();
-
-      if (sent) continue;
-
-      due.push({
-        envelopeId: env.id,
-        title: env.notificationTitle || 'Your Master',
-        body: env.notificationBody || 'Your next envelope is waiting.',
-        fireAt,
-      });
-    }
-  }
-
-  // Collect reminders due: envelopes with reminderAt set, choices not yet made, interval elapsed
-  type ReminderDue = { envelopeId: string; title: string; body: string; reminderIndex: number };
-  const dueReminders: ReminderDue[] = [];
-
-  for (const day of days) {
-    const envelopes: any[] = day.envelopes ?? [];
-    for (const env of envelopes) {
-      if (!env?.reminderAt || !env?.reminderIntervalMinutes) continue;
-      const reminderStart = new Date(env.reminderAt);
-      if (reminderStart > now) continue;
-
-      // Only send reminders for envelopes that are unlocked (scheduledAt has passed or is null)
-      if (env.scheduledAt) {
-        const scheduledTime = new Date(env.scheduledAt);
-        if (scheduledTime > now) continue;
+      if (!sent) {
+        outgoing.push({
+          kind: 'initial',
+          envelopeId: env.id,
+          title: env.notificationTitle || 'Your Master',
+          body: env.notificationBody || 'Your next envelope is waiting.',
+        });
+        continue; // don't also reminder on the same tick we first notify
       }
 
-      // Skip if a choice has already been made for this envelope
+      // Reminder — only if configured and she still hasn't responded.
+      if (!env.reminderIntervalMinutes) continue;
       const { data: response } = await supabase
         .from('player_responses')
         .select('id')
@@ -219,23 +294,20 @@ Deno.serve(async () => {
         .maybeSingle();
       if (response) continue;
 
-      // How many reminders have already been sent?
-      const { count: sentCount } = await supabase
+      const { count: reminderCount } = await supabase
         .from('sent_reminders')
         .select('id', { count: 'exact', head: true })
         .eq('envelope_id', env.id);
-      const alreadySent = sentCount ?? 0;
-
-      // Respect max count (0 = unlimited)
+      const alreadySent = reminderCount ?? 0;
       const maxCount: number = env.reminderMaxCount ?? 0;
       if (maxCount > 0 && alreadySent >= maxCount) continue;
 
-      // Is the next reminder window due?
-      const intervalMs = env.reminderIntervalMinutes * 60 * 1000;
-      const nextFireAt = new Date(reminderStart.getTime() + alreadySent * intervalMs);
-      if (nextFireAt > now) continue;
+      const intervalMs = env.reminderIntervalMinutes * 60_000;
+      const nextReminderAt = new Date(node.unlockAt.getTime() + (alreadySent + 1) * intervalMs);
+      if (nextReminderAt > now) continue;
 
-      dueReminders.push({
+      outgoing.push({
+        kind: 'reminder',
         envelopeId: env.id,
         title: env.reminderTitle || env.notificationTitle || 'Your Master',
         body: env.reminderBody || 'You still have a choice waiting.',
@@ -244,65 +316,74 @@ Deno.serve(async () => {
     }
   }
 
-  const allDue = [...due.map(n => ({ ...n, type: 'initial' as const })),
-                  ...dueReminders.map(r => ({ ...r, type: 'reminder' as const }))];
-
-  if (!allDue.length) {
-    return new Response('Nothing due', { status: 200 });
-  }
-
-  // Fetch all push subscriptions
-  const { data: subscriptions } = await supabase
-    .from('push_subscriptions')
-    .select('endpoint, p256dh, auth');
-
-  if (!subscriptions?.length) {
-    return new Response('No subscriptions', { status: 200 });
-  }
+  // 8. One-shot admin commands (manual override — run even while paused).
+  const { data: commands } = await supabase
+    .from('notification_commands')
+    .select('id, type, envelope_id')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
 
   const results: string[] = [];
 
-  for (const notification of allDue) {
-    const payload = JSON.stringify({
-      title: notification.title,
-      body: notification.body,
-      url: '/',
-    });
-
-    let sentCount = 0;
-    for (const sub of subscriptions) {
-      try {
-        const result = await sendWebPush(sub, payload);
-        if (result.ok) sentCount++;
-        if (result.status === 410 || result.status === 404) {
-          await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
-        }
-      } catch (_err) {
-        // skip failed subscription
-      }
-    }
-
-    if (notification.type === 'initial') {
-      await supabase.from('sent_notifications').insert({
-        envelope_id: notification.envelopeId,
-        title: notification.title,
-        body: notification.body,
-        sent_at: new Date().toISOString(),
-        recipients: sentCount,
-      });
-    } else {
-      await supabase.from('sent_reminders').insert({
-        envelope_id: notification.envelopeId,
-        reminder_index: (notification as ReminderDue).reminderIndex,
-        title: notification.title,
-        body: notification.body,
-        sent_at: new Date().toISOString(),
-        recipients: sentCount,
-      });
-    }
-
-    results.push(`${notification.type}:${notification.envelopeId}: sent to ${sentCount}`);
+  if (!outgoing.length && !(commands?.length)) {
+    return new Response(paused ? 'Paused — nothing sent' : 'Nothing due', { status: 200 });
   }
 
-  return new Response(results.join('\n'), { status: 200 });
+  // No devices: don't lose the queue to a later burst — just resolve commands.
+  if (!subs.length) {
+    if (commands?.length) {
+      await supabase
+        .from('notification_commands')
+        .update({ status: 'done', result: 'no subscriptions', processed_at: new Date().toISOString() })
+        .in('id', commands.map((c) => c.id));
+    }
+    return new Response('No subscriptions', { status: 200 });
+  }
+
+  // 9. Send automatic notifications.
+  for (const note of outgoing) {
+    const count = await sendToAll(subs, { title: note.title, body: note.body, url: '/' });
+    if (note.kind === 'initial') {
+      await supabase.from('sent_notifications').upsert(
+        { envelope_id: note.envelopeId, title: note.title, body: note.body, sent_at: new Date().toISOString(), recipients: count },
+        { onConflict: 'envelope_id' },
+      );
+    } else {
+      await supabase.from('sent_reminders').insert({
+        envelope_id: note.envelopeId,
+        reminder_index: note.reminderIndex ?? 1,
+        title: note.title,
+        body: note.body,
+        sent_at: new Date().toISOString(),
+        recipients: count,
+      });
+    }
+    results.push(`${note.kind}:${note.envelopeId} -> ${count}`);
+  }
+
+  // 10. Process one-shot commands.
+  for (const cmd of (commands ?? [])) {
+    const env = cmd.envelope_id ? envById[cmd.envelope_id] : null;
+    if (cmd.type !== 'send_now' || !env) {
+      await supabase.from('notification_commands')
+        .update({ status: 'error', result: env ? 'unknown command' : 'envelope not found', processed_at: new Date().toISOString() })
+        .eq('id', cmd.id);
+      continue;
+    }
+    const count = await sendToAll(subs, {
+      title: env.notificationTitle || 'Your Master',
+      body: env.notificationBody || 'Your next envelope is waiting.',
+      url: '/',
+    });
+    await supabase.from('sent_notifications').upsert(
+      { envelope_id: env.id, title: env.notificationTitle || 'Your Master', body: env.notificationBody || '', sent_at: new Date().toISOString(), recipients: count },
+      { onConflict: 'envelope_id' },
+    );
+    await supabase.from('notification_commands')
+      .update({ status: 'done', result: `sent to ${count}`, processed_at: new Date().toISOString() })
+      .eq('id', cmd.id);
+    results.push(`send_now:${env.id} -> ${count}`);
+  }
+
+  return new Response(results.join('\n') || 'OK', { status: 200 });
 });

@@ -716,10 +716,10 @@ a {
 
 .inner-lining {
   position: absolute;
-  top: 6px;
-  left: 10px;
-  right: 10px;
-  height: 53%;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 54%;
   clip-path: polygon(0 0, 100% 0, 50% 100%);
   background:
     radial-gradient(ellipse at 50% 18%, rgba(210, 40, 70, 0.32), transparent 48%),
@@ -1938,16 +1938,17 @@ textarea.task-input {
   padding: 64px 42px;
   text-align: center;
   border-radius: 2px;
+  /* Cooler, more neutral parchment — same world, just waiting */
   background:
-    radial-gradient(ellipse at 20% 15%, #faf0db 0%, transparent 40%),
-    radial-gradient(ellipse at 80% 85%, #e8d9b6 0%, transparent 45%),
-    radial-gradient(ellipse at 50% 50%, #f4e9d3 0%, #ead9b8 100%);
+    radial-gradient(ellipse at 20% 15%, #ede8df 0%, transparent 40%),
+    radial-gradient(ellipse at 80% 85%, #d8d2c5 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, #e4dfd5 0%, #d2cbbe 100%);
   color: var(--ink);
   box-shadow:
-    0 2px 0 rgba(201, 182, 143, 0.4),
-    0 4px 0 rgba(201, 182, 143, 0.25),
-    0 40px 70px -25px rgba(0, 0, 0, 0.7),
-    inset 0 0 100px rgba(122, 82, 40, 0.06);
+    0 2px 0 rgba(180, 170, 155, 0.4),
+    0 4px 0 rgba(160, 150, 135, 0.25),
+    0 40px 70px -25px rgba(0, 0, 0, 0.65),
+    inset 0 0 100px rgba(90, 80, 60, 0.04);
 }
 
 .locked-view::before {
@@ -1958,19 +1959,101 @@ textarea.task-input {
   pointer-events: none;
 }
 
-.locked-eye {
-  width: 58px;
-  height: 58px;
-  margin: 0 auto 20px;
+.locked-view-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: 100%;
+}
+
+/* Standalone wax seal in locked view */
+.locked-seal-host {
+  --seal-size: 112px;
+  position: relative;
+  width: var(--seal-size);
+  height: var(--seal-size);
+  margin: 0 auto 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  animation: seal-breathe 4.8s ease-in-out infinite;
+  filter:
+    drop-shadow(0 4px 4px rgba(40, 4, 10, 0.55))
+    drop-shadow(0 10px 14px rgba(0, 0, 0, 0.45));
+  transform-origin: center;
+  transition: filter 220ms ease;
+}
+
+.locked-seal-host:hover {
+  filter:
+    drop-shadow(0 4px 4px rgba(40, 4, 10, 0.55))
+    drop-shadow(0 10px 14px rgba(0, 0, 0, 0.45))
+    brightness(1.06)
+    saturate(1.06);
+}
+
+.locked-seal-host.locked-seal-tapped {
+  animation: seal-tap 0.5s ease-out forwards;
+  filter:
+    drop-shadow(0 4px 4px rgba(40, 4, 10, 0.55))
+    drop-shadow(0 10px 14px rgba(0, 0, 0, 0.45))
+    brightness(1.1)
+    saturate(1.12);
+}
+
+/* Override wax-seal's absolute positioning for standalone use */
+.locked-seal-host .seal-disc,
+.locked-seal-host .half,
+.locked-seal-host .seal-rim,
+.locked-seal-host .seal-shine,
+.locked-seal-host .motif {
+  position: absolute;
+}
+
+.locked-seal-host .half {
+  width: var(--seal-size);
+  height: var(--seal-size);
+  border-radius: 50%;
+  background: transparent;
+  opacity: 0;
+}
+
+.locked-seal-host .half.left {
+  clip-path: polygon(0 0, 53% 0, 43% 100%, 0 100%);
+}
+
+.locked-seal-host .half.right {
+  clip-path: polygon(53% 0, 100% 0, 100% 100%, 43% 100%);
+}
+
+.locked-seal-host .motif {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(122, 31, 51, 0.22) 0%, transparent 72%);
-  color: var(--wine);
-  font-size: 2rem;
-  font-weight: bold;
-  animation: watchpulse 2.8s ease-out infinite;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 700;
+  font-size: 2.4rem;
+  color: rgba(40, 4, 12, 0.92);
+  text-shadow:
+    1px 1px 0 rgba(255, 206, 188, 0.32),
+    2px 2px 1px rgba(255, 200, 184, 0.22),
+    -1px -1px 0 rgba(15, 0, 4, 0.95),
+    -2px -2px 3px rgba(15, 0, 4, 0.7),
+    0 0 1px rgba(15, 0, 4, 0.6);
+  z-index: 5;
+}
+
+.locked-text {
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .locked-heading {
@@ -1978,27 +2061,66 @@ textarea.task-input {
   font-family: var(--display);
   font-style: italic;
   font-weight: 400;
-  color: var(--wine-deep);
   font-size: 2rem;
+  line-height: 1.1;
+  color: var(--wine-deep);
+  animation: locked-text-in 0.6s ease both;
 }
 
 .locked-body {
-  margin: 0 auto 24px;
-  max-width: 34ch;
+  margin: 0 auto;
+  max-width: 32ch;
   font-family: var(--serif);
   font-style: italic;
-  font-size: 1.18rem;
-  line-height: 1.6;
+  font-size: 1.15rem;
+  line-height: 1.65;
+  white-space: pre-line;
   color: var(--ink-soft);
+  animation: locked-text-in 0.7s 0.08s ease both;
+}
+
+.locked-tease {
+  margin: 0 auto;
+  max-width: 30ch;
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.4rem;
+  line-height: 1.4;
+  color: var(--wine);
+  animation: locked-tease-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .locked-countdown {
   margin-top: 32px;
   font-family: var(--sans);
-  font-size: 0.85rem;
-  letter-spacing: 0.03em;
-  color: rgba(122, 31, 51, 0.6);
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  color: rgba(90, 58, 66, 0.55);
+  animation: locked-text-in 0.9s 0.18s ease both;
+}
+
+@keyframes seal-breathe {
+  0%, 100% { transform: rotate(-4deg) scale(1); }
+  50%       { transform: rotate(-4deg) scale(1.035); }
+}
+
+@keyframes seal-tap {
+  0%   { transform: rotate(-4deg) scale(1); }
+  28%  { transform: rotate(-4deg) scale(0.93); }
+  62%  { transform: rotate(-4deg) scale(1.06); }
+  100% { transform: rotate(-4deg) scale(1); }
+}
+
+@keyframes locked-text-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes locked-tease-in {
+  from { opacity: 0; transform: scale(0.97) translateY(5px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* ── Choice History Panel ─────────────────────────────── */
