@@ -258,10 +258,41 @@ function getFilenameDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// ── Timezone: MST Phoenix (UTC-7, no DST) ────────────────────────────────────
+const TZ = 'America/Phoenix';
+
+function formatMST(value, options = {}) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Unknown time';
+  return date.toLocaleString('en-US', { timeZone: TZ, ...options });
+}
+
+// UTC ISO string → "YYYY-MM-DDTHH:mm" in Phoenix local time (for datetime-local inputs)
+function toPhoenixLocal(iso) {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(date);
+  const p = {};
+  parts.forEach(({ type, value: v }) => { p[type] = v; });
+  return `${p.year}-${p.month}-${p.day}T${p.hour === '24' ? '00' : p.hour}:${p.minute}`;
+}
+
+// "YYYY-MM-DDTHH:mm" entered as Phoenix time → UTC ISO string
+function fromPhoenixLocal(dtl) {
+  if (!dtl) return null;
+  const date = new Date(`${dtl}:00-07:00`); // Phoenix is always UTC-7
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Unknown time';
-  return date.toLocaleString();
+  return formatMST(value);
 }
 
 function createFilenameSlug(value) {
@@ -1168,7 +1199,7 @@ function AdminApp() {
       const result = await publishStory(
         supabase,
         draftToPublish,
-        `Published at ${new Date().toLocaleString()}`,
+        `Published at ${formatMST(new Date().toISOString())} MST`,
       );
       setNotice({ tone: 'success', text: `Story published live as version ${result.versionNumber}.` });
 
@@ -3365,7 +3396,7 @@ function AdminApp() {
                   <strong>Her clock</strong>
                   <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>
                     {notifSettings?.anchor_at
-                      ? `Anchored to ${new Date(notifSettings.anchor_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}`
+                      ? `Anchored to ${formatMST(notifSettings.anchor_at, { dateStyle: 'medium', timeStyle: 'short' })} MST`
                       : 'Auto-anchors to when she first subscribes.'}
                   </div>
                 </div>
@@ -3449,7 +3480,7 @@ function AdminApp() {
                         </div>
                         <div className="notif-row-time">
                           {hasTime
-                            ? new Date(envelope.scheduledAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+                            ? `${formatMST(envelope.scheduledAt, { dateStyle: 'medium', timeStyle: 'short' })} MST`
                             : '—'}
                         </div>
                         <div className="notif-row-fields">
@@ -3486,10 +3517,10 @@ function AdminApp() {
                             <span>First Reminder At</span>
                             <input
                               type="datetime-local"
-                              value={envelope.reminderAt ? envelope.reminderAt.slice(0, 16) : ''}
+                              value={toPhoenixLocal(envelope.reminderAt)}
                               onChange={(e) => {
                                 updateEnvelope(dayIndex, envIndex, {
-                                  reminderAt: e.target.value ? new Date(e.target.value).toISOString() : null,
+                                  reminderAt: fromPhoenixLocal(e.target.value),
                                 });
                               }}
                             />
@@ -3943,11 +3974,11 @@ function AdminApp() {
                                 <span>Notification Time</span>
                                 <input
                                   type="datetime-local"
-                                  value={selectedEnvelope.scheduledAt ? selectedEnvelope.scheduledAt.slice(0, 16) : ''}
+                                  value={toPhoenixLocal(selectedEnvelope.scheduledAt)}
                                   onChange={(event) => {
                                     const val = event.target.value;
                                     updateEnvelope(safeDayIndex, safeEnvelopeIndex, {
-                                      scheduledAt: val ? new Date(val).toISOString() : null,
+                                      scheduledAt: fromPhoenixLocal(val),
                                     });
                                   }}
                                 />
@@ -3967,7 +3998,7 @@ function AdminApp() {
                               </label>
                             </div>
                             <div className="field-note">
-                              Times are stored in your browser's local timezone. Notifications will fire at this time on iOS devices.
+                              Times are entered and displayed in MST (Phoenix, UTC-7). No daylight saving.
                             </div>
                             <div className="structure-actions">
                               <label className="toggle-field">
