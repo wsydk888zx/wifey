@@ -29,3 +29,4 @@ tmp/
 DerivedData/
 apps/player/ios/App/build/
 apps/player/ios/build/
+.vercel

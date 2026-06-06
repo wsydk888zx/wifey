@@ -5,14 +5,14 @@
       "name": "admin",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "admin:dev"],
-      "port": 5174,
+      "port": 8774,
       "autoPort": false
     },
     {
       "name": "player",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace", "@wifey/player"],
-      "port": 5173,
+      "port": 8773,
       "autoPort": false
     },
     {
