@@ -65,7 +65,8 @@ async function buildVapidJwt(audience: string): Promise<string> {
 async function sendWebPush(
   subscription: { endpoint: string; p256dh: string; auth: string },
   payload: string,
-): Promise<{ ok: boolean; status?: number }> {
+  signal?: AbortSignal,
+): Promise<{ ok: boolean; status?: number; body?: string }> {
   const url = new URL(subscription.endpoint);
   const audience = `${url.protocol}//${url.host}`;
   const jwt = await buildVapidJwt(audience);
@@ -142,35 +143,79 @@ async function sendWebPush(
       'Content-Type': 'application/octet-stream',
       'Content-Encoding': 'aes128gcm',
       TTL: '86400',
+      Urgency: 'high',
     },
     body,
+    signal,
   });
 
-  return { ok: res.ok || res.status === 201, status: res.status };
+  const ok = res.ok || res.status === 201;
+  let errBody: string | undefined;
+  if (!ok) { try { errBody = (await res.text()).slice(0, 140); } catch { /* ignore */ } }
+  return { ok, status: res.status, body: errBody };
 }
 
 // ── Scheduling helpers ────────────────────────────────────────────────────────
 
 const DEFAULT_OFFSET_MINUTES = 720; // 12h fallback when no cadence can be derived
 
+// Transient = worth retrying; never prune these. Dead = permanently unusable; prune.
+const TRANSIENT_STATUS = new Set([0, 408, 429, 500, 502, 503, 504]);
+const DEAD_STATUS = new Set([403, 404, 410]);
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Deliver to one subscription with a hard timeout + retry on transient failures.
+async function deliverOne(
+  sub: { endpoint: string; p256dh: string; auth: string },
+  payload: string,
+): Promise<{ status: number; ok: boolean; body?: string }> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const r = await sendWebPush(sub, payload, controller.signal);
+      clearTimeout(timer);
+      if (r.ok) return { status: r.status ?? 201, ok: true };
+      if (TRANSIENT_STATUS.has(r.status ?? 0) && attempt < 2) { await sleep(400 * (attempt + 1)); continue; }
+      return { status: r.status ?? 0, ok: false, body: r.body };
+    } catch (err) {
+      clearTimeout(timer);
+      if (attempt < 2) { await sleep(400 * (attempt + 1)); continue; }
+      return { status: 0, ok: false, body: String(err).slice(0, 120) };
+    }
+  }
+  return { status: 0, ok: false };
+}
+
+// Fan out to EVERY subscription in parallel. One slow/dead endpoint can never
+// stall or skip another. Only permanently-dead endpoints are pruned.
 async function sendToAll(
   subs: Array<{ endpoint: string; p256dh: string; auth: string }>,
   payloadObj: Record<string, unknown>,
-): Promise<number> {
+): Promise<{ count: number; detail: string[] }> {
   const payload = JSON.stringify(payloadObj);
-  let sentCount = 0;
-  for (const sub of subs) {
-    try {
-      const result = await sendWebPush(sub, payload);
-      if (result.ok) sentCount++;
-      if (result.status === 410 || result.status === 404) {
-        await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
-      }
-    } catch (_err) {
-      // skip failed subscription
+  const settled = await Promise.allSettled(subs.map((s) => deliverOne(s, payload)));
+  let count = 0;
+  const detail: string[] = [];
+  const prune: string[] = [];
+  settled.forEach((res, i) => {
+    const tail = subs[i].endpoint.slice(-10);
+    if (res.status === 'fulfilled') {
+      const r = res.value;
+      if (r.ok) count++;
+      detail.push(`${tail}:${r.status}${r.body ? ' ' + r.body : ''}`);
+      if (DEAD_STATUS.has(r.status)) prune.push(subs[i].endpoint);
+    } else {
+      detail.push(`${tail}:REJECTED`);
     }
+  });
+  if (prune.length) {
+    await supabase.from('push_subscriptions').delete().in('endpoint', prune);
   }
-  return sentCount;
+  return { count, detail };
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
@@ -342,7 +387,7 @@ Deno.serve(async () => {
 
   // 9. Send automatic notifications.
   for (const note of outgoing) {
-    const count = await sendToAll(subs, { title: note.title, body: note.body, url: '/' });
+    const { count } = await sendToAll(subs, { title: note.title, body: note.body, url: '/' });
     if (note.kind === 'initial') {
       await supabase.from('sent_notifications').upsert(
         { envelope_id: note.envelopeId, title: note.title, body: note.body, sent_at: new Date().toISOString(), recipients: count },
@@ -370,7 +415,7 @@ Deno.serve(async () => {
         .eq('id', cmd.id);
       continue;
     }
-    const count = await sendToAll(subs, {
+    const { count, detail } = await sendToAll(subs, {
       title: env.notificationTitle || 'Your Master',
       body: env.notificationBody || 'Your next envelope is waiting.',
       url: '/',
@@ -380,7 +425,7 @@ Deno.serve(async () => {
       { onConflict: 'envelope_id' },
     );
     await supabase.from('notification_commands')
-      .update({ status: 'done', result: `sent to ${count}`, processed_at: new Date().toISOString() })
+      .update({ status: 'done', result: `sent to ${count} | ${detail.join(' ; ')}`.slice(0, 480), processed_at: new Date().toISOString() })
       .eq('id', cmd.id);
     results.push(`send_now:${env.id} -> ${count}`);
   }
