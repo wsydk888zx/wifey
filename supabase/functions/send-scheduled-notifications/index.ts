@@ -270,6 +270,16 @@ Deno.serve(async () => {
   if (!anchorAt && subs.length) anchorAt = new Date(subs[0].created_at);
 
   // 6. Ordered notifiable spine + each envelope's effective fire time.
+  //
+  // Two scheduling modes, decided per-envelope:
+  //   ABSOLUTE — env.scheduledAt is set → fire at exactly that UTC time.
+  //              Admin entered a clock time in the "Notification Time" field
+  //              and it should mean what it says.
+  //   PACE-ADAPTIVE — env.scheduledAt is null → fire at
+  //              (previous completion + unlockOffsetMinutes), or at the anchor
+  //              for the first envelope.
+  // Either way, an envelope is never notified before she's finished the one
+  // before it (prevents stacking and out-of-order alerts).
   type Node = { env: any; reachable: boolean; unlockAt: Date | null };
   const computed: Node[] = [];
   const envById: Record<string, any> = {};
@@ -280,23 +290,28 @@ Deno.serve(async () => {
       envById[env.id] = env;
       if (env.notify === false) continue; // silent/branch envelopes never notify or anchor
 
-      let offsetMin = DEFAULT_OFFSET_MINUTES;
-      if (typeof env.unlockOffsetMinutes === 'number' && env.unlockOffsetMinutes > 0) {
-        offsetMin = env.unlockOffsetMinutes;
-      } else if (prev?.scheduledAt && env.scheduledAt) {
-        const delta = (new Date(env.scheduledAt).getTime() - new Date(prev.scheduledAt).getTime()) / 60_000;
-        if (delta > 0) offsetMin = delta;
-      }
-
       let fireAt: Date | null = null;
       let reachable = false;
-      if (!prev) {
-        fireAt = anchorAt;          // first envelope fires at the anchor
-        reachable = true;
-      } else if (completedAtMap[prev.id]) {
-        fireAt = new Date(new Date(completedAtMap[prev.id]).getTime() + offsetMin * 60_000);
-        reachable = true;
+      const prevDone = prev ? !!completedAtMap[prev.id] : true;
+
+      if (env.scheduledAt) {
+        if (prevDone) {
+          fireAt = new Date(env.scheduledAt);
+          reachable = true;
+        }
+      } else {
+        const offsetMin = (typeof env.unlockOffsetMinutes === 'number' && env.unlockOffsetMinutes > 0)
+          ? env.unlockOffsetMinutes
+          : DEFAULT_OFFSET_MINUTES;
+        if (!prev) {
+          fireAt = anchorAt;
+          reachable = true;
+        } else if (completedAtMap[prev.id]) {
+          fireAt = new Date(new Date(completedAtMap[prev.id]).getTime() + offsetMin * 60_000);
+          reachable = true;
+        }
       }
+
       const unlockAt = fireAt ? new Date(fireAt.getTime() + shiftMs) : null;
       computed.push({ env, reachable, unlockAt });
       prev = env;
