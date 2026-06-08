@@ -642,6 +642,41 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
     Object.values(formResponses).forEach((r) => Object.assign(flat, r));
     return flat;
   }, [formResponses]);
+
+  // The most recent letter she's already received — surfaced on the locked gate
+  // card so she can re-read it while she waits for the next one. Picks the most
+  // recently completed envelope (by completion time) that has a resolvable card.
+  const lastLetter = useMemo(() => {
+    if (!isCurrentLocked) return null;
+    const completed = flattened
+      .filter((item) => completedIdx.has(item.index))
+      .map((item) => ({
+        item,
+        ts: completedAtMap[item.envelopeId] ? Date.parse(completedAtMap[item.envelopeId]) : 0,
+      }))
+      .sort((a, b) => b.ts - a.ts);
+
+    for (const { item } of completed) {
+      const prevEnv = item.envelope;
+      const choiceId = selectedChoices[prevEnv.id];
+      const choice =
+        prevEnv.choices?.find((c) => c.id === choiceId) ||
+        (prevEnv.choices?.length === 1 ? prevEnv.choices[0] : null);
+      const card = choice?.card;
+      if (!card) continue;
+      return {
+        card,
+        envelope: {
+          ...prevEnv,
+          label: envelopeDisplay.get(prevEnv.id)?.label || prevEnv.label,
+          timeLabel: envelopeDisplay.get(prevEnv.id)?.timeLabel || prevEnv.timeLabel,
+        },
+        receivedAt: completedAtMap[prevEnv.id] || null,
+      };
+    }
+    return null;
+  }, [isCurrentLocked, flattened, completedIdx, completedAtMap, selectedChoices, envelopeDisplay]);
+
   const rp = useCallback((text) => replacePlaceholders(text, storySettings), [storySettings]);
 
   const handleOpenEnvelope = () => {
@@ -871,6 +906,8 @@ function PlayerApp({ content, storySettings, flowMap, initialState, storyMeta, s
               unlockAt={effectiveUnlockTime}
               storySettings={storySettings}
               onUnlock={handleEnvelopeUnlock}
+              lastLetter={lastLetter}
+              globalResponses={globalResponses}
             />
           ) : null}
 

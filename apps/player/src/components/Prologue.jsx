@@ -75,7 +75,7 @@ function Prologue({ prologue, addressee, storySettings, onBegin, dayCount, envel
 
           <div className="prologue-wax" aria-hidden="true">
             <span className="prologue-wax-drip" />
-            <span className="prologue-wax-initial">Y</span>
+            <span className="prologue-wax-initial">M</span>
           </div>
         </div>
       </div>

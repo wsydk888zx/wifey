@@ -2123,6 +2123,117 @@ textarea.task-input {
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
+/* ── Re-read last letter (from the locked gate) ───────── */
+
+.locked-reread {
+  margin-top: 30px;
+  padding: 11px 24px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+  color: var(--wine-deep);
+  background: transparent;
+  border: 1px solid rgba(122, 31, 51, 0.34);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+  animation: locked-text-in 1s 0.26s ease both;
+}
+
+.locked-reread:hover {
+  background: rgba(122, 31, 51, 0.08);
+  border-color: rgba(122, 31, 51, 0.52);
+}
+
+.letter-replay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding:
+    calc(28px + env(safe-area-inset-top))
+    14px
+    calc(28px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: letter-replay-fade 220ms ease both;
+}
+
+@keyframes letter-replay-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.letter-replay-scrim {
+  position: fixed;
+  inset: 0;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: rgba(8, 3, 8, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.letter-replay-sheet {
+  position: relative;
+  z-index: 1;
+  width: min(96vw, 660px);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  animation: letter-replay-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes letter-replay-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.letter-replay-close {
+  align-self: flex-end;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.55rem;
+  line-height: 1;
+  color: rgba(252, 244, 229, 0.82);
+  background: rgba(20, 8, 12, 0.55);
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+.letter-replay-close:hover {
+  background: rgba(122, 31, 51, 0.42);
+  color: #fff;
+}
+
+.letter-replay-kicker {
+  margin-bottom: 16px;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgba(212, 184, 126, 0.72);
+}
+
+/* The replayed letter is read-only — no entrance shift, no clipped scroll. */
+.letter-replay .card-stage {
+  opacity: 1;
+  transform: none;
+  transition: none;
+}
+
 /* ── Choice History Panel ─────────────────────────────── */
 
 .choice-history-panel {
@@ -3417,7 +3528,7 @@ textarea.task-input {
   }
 
   .envelope .address-block {
-    top: 74%;
+    top: 26%;
   }
 
   .envelope .body .sub {

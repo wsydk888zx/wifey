@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { replacePlaceholders } from '@wifey/story-core';
+import LetterReplay from './LetterReplay.jsx';
 
 const DEFAULT_TEASES = [
   'I said be patient. Come back later.',
@@ -32,10 +33,11 @@ function formatCountdown(unlockAt) {
   return `opens in ${minutes}m`;
 }
 
-export default function LockedView({ envelope, unlockAt, storySettings, onUnlock }) {
+export default function LockedView({ envelope, unlockAt, storySettings, onUnlock, lastLetter, globalResponses }) {
   const [countdown, setCountdown] = useState(() => (unlockAt ? formatCountdown(unlockAt) : null));
   const [teaseIndex, setTeaseIndex] = useState(null);
   const [tapped, setTapped] = useState(false);
+  const [replayOpen, setReplayOpen] = useState(false);
 
   const rp = useCallback((text) => replacePlaceholders(text, storySettings), [storySettings]);
 
@@ -135,7 +137,29 @@ export default function LockedView({ envelope, unlockAt, storySettings, onUnlock
         {countdown && (
           <div className="locked-countdown">{countdown}</div>
         )}
+
+        {lastLetter ? (
+          <button
+            className="locked-reread"
+            onClick={() => setReplayOpen(true)}
+            type="button"
+          >
+            Re-read his last letter
+          </button>
+        ) : null}
       </div>
+
+      {replayOpen && lastLetter ? (
+        <LetterReplay
+          card={lastLetter.card}
+          envelope={lastLetter.envelope}
+          addressee={herName === 'you' ? '' : herName}
+          storySettings={storySettings}
+          receivedAt={lastLetter.receivedAt}
+          globalResponses={globalResponses}
+          onClose={() => setReplayOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

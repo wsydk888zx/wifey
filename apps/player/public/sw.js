@@ -58,7 +58,7 @@ self.addEventListener('push', (e) => {
     }
   }
 
-  const title = data.title || 'Yours, Watching';
+  const title = data.title || 'Mine';
   const body = data.body || 'Your next envelope is waiting.';
   const url = data.url || '/';
 
