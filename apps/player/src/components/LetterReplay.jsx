@@ -54,7 +54,13 @@ function LetterReplay({ card, envelope, addressee, storySettings, receivedAt, gl
   };
 
   return (
-    <div className="letter-replay" role="dialog" aria-modal="true" aria-label="Your last letter">
+    <div
+      className="letter-replay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Your last letter"
+      onClick={(event) => event.stopPropagation()}
+    >
       <button className="letter-replay-scrim" onClick={onClose} aria-label="Close letter" type="button" />
       <div className="letter-replay-sheet">
         <button className="letter-replay-close" onClick={onClose} aria-label="Close" type="button">

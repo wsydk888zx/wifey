@@ -1938,17 +1938,32 @@ textarea.task-input {
   padding: 64px 42px;
   text-align: center;
   border-radius: 2px;
-  /* Cooler, more neutral parchment — same world, just waiting */
+  cursor: pointer;
+  /* Same warm cardstock as the main letter cards */
   background:
-    radial-gradient(ellipse at 20% 15%, #ede8df 0%, transparent 40%),
-    radial-gradient(ellipse at 80% 85%, #d8d2c5 0%, transparent 45%),
-    radial-gradient(ellipse at 50% 50%, #e4dfd5 0%, #d2cbbe 100%);
+    radial-gradient(ellipse at 15% 10%, #faf0db 0%, transparent 40%),
+    radial-gradient(ellipse at 85% 90%, #e8d9b6 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, #f4e9d3 0%, #ead9b8 100%);
   color: var(--ink);
   box-shadow:
-    0 2px 0 rgba(180, 170, 155, 0.4),
-    0 4px 0 rgba(160, 150, 135, 0.25),
-    0 40px 70px -25px rgba(0, 0, 0, 0.65),
-    inset 0 0 100px rgba(90, 80, 60, 0.04);
+    0 2px 0 rgba(201, 182, 143, 0.4),
+    0 4px 0 rgba(201, 182, 143, 0.25),
+    0 6px 0 rgba(201, 182, 143, 0.15),
+    0 50px 90px -25px rgba(0, 0, 0, 0.75),
+    0 20px 40px -15px rgba(0, 0, 0, 0.5),
+    inset 0 0 140px rgba(122, 82, 40, 0.06);
+}
+
+/* Paper grain, matching .task-card */
+.locked-view::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .15 0 0 0 .09 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+  opacity: 0.75;
 }
 
 .locked-view::before {
@@ -1957,9 +1972,12 @@ textarea.task-input {
   inset: 24px;
   border: 1px solid rgba(180, 140, 90, 0.12);
   pointer-events: none;
+  z-index: 1;
 }
 
 .locked-view-inner {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
