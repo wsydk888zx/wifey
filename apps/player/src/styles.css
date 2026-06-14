@@ -1938,17 +1938,32 @@ textarea.task-input {
   padding: 64px 42px;
   text-align: center;
   border-radius: 2px;
-  /* Cooler, more neutral parchment — same world, just waiting */
+  cursor: pointer;
+  /* Same warm cardstock as the main letter cards */
   background:
-    radial-gradient(ellipse at 20% 15%, #ede8df 0%, transparent 40%),
-    radial-gradient(ellipse at 80% 85%, #d8d2c5 0%, transparent 45%),
-    radial-gradient(ellipse at 50% 50%, #e4dfd5 0%, #d2cbbe 100%);
+    radial-gradient(ellipse at 15% 10%, #faf0db 0%, transparent 40%),
+    radial-gradient(ellipse at 85% 90%, #e8d9b6 0%, transparent 45%),
+    radial-gradient(ellipse at 50% 50%, #f4e9d3 0%, #ead9b8 100%);
   color: var(--ink);
   box-shadow:
-    0 2px 0 rgba(180, 170, 155, 0.4),
-    0 4px 0 rgba(160, 150, 135, 0.25),
-    0 40px 70px -25px rgba(0, 0, 0, 0.65),
-    inset 0 0 100px rgba(90, 80, 60, 0.04);
+    0 2px 0 rgba(201, 182, 143, 0.4),
+    0 4px 0 rgba(201, 182, 143, 0.25),
+    0 6px 0 rgba(201, 182, 143, 0.15),
+    0 50px 90px -25px rgba(0, 0, 0, 0.75),
+    0 20px 40px -15px rgba(0, 0, 0, 0.5),
+    inset 0 0 140px rgba(122, 82, 40, 0.06);
+}
+
+/* Paper grain, matching .task-card */
+.locked-view::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .15 0 0 0 .09 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+  opacity: 0.75;
 }
 
 .locked-view::before {
@@ -1957,9 +1972,12 @@ textarea.task-input {
   inset: 24px;
   border: 1px solid rgba(180, 140, 90, 0.12);
   pointer-events: none;
+  z-index: 1;
 }
 
 .locked-view-inner {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2121,6 +2139,117 @@ textarea.task-input {
 @keyframes locked-tease-in {
   from { opacity: 0; transform: scale(0.97) translateY(5px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Re-read last letter (from the locked gate) ───────── */
+
+.locked-reread {
+  margin-top: 30px;
+  padding: 11px 24px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.98rem;
+  letter-spacing: 0.01em;
+  color: var(--wine-deep);
+  background: transparent;
+  border: 1px solid rgba(122, 31, 51, 0.34);
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 200ms ease, border-color 200ms ease, color 200ms ease;
+  animation: locked-text-in 1s 0.26s ease both;
+}
+
+.locked-reread:hover {
+  background: rgba(122, 31, 51, 0.08);
+  border-color: rgba(122, 31, 51, 0.52);
+}
+
+.letter-replay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding:
+    calc(28px + env(safe-area-inset-top))
+    14px
+    calc(28px + env(safe-area-inset-bottom));
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: letter-replay-fade 220ms ease both;
+}
+
+@keyframes letter-replay-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.letter-replay-scrim {
+  position: fixed;
+  inset: 0;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+  background: rgba(8, 3, 8, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.letter-replay-sheet {
+  position: relative;
+  z-index: 1;
+  width: min(96vw, 660px);
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  animation: letter-replay-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes letter-replay-rise {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.letter-replay-close {
+  align-self: flex-end;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.55rem;
+  line-height: 1;
+  color: rgba(252, 244, 229, 0.82);
+  background: rgba(20, 8, 12, 0.55);
+  border: 1px solid var(--glass-border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease;
+}
+
+.letter-replay-close:hover {
+  background: rgba(122, 31, 51, 0.42);
+  color: #fff;
+}
+
+.letter-replay-kicker {
+  margin-bottom: 16px;
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+  color: rgba(212, 184, 126, 0.72);
+}
+
+/* The replayed letter is read-only — no entrance shift, no clipped scroll. */
+.letter-replay .card-stage {
+  opacity: 1;
+  transform: none;
+  transition: none;
 }
 
 /* ── Choice History Panel ─────────────────────────────── */
@@ -3417,7 +3546,7 @@ textarea.task-input {
   }
 
   .envelope .address-block {
-    top: 18%;
+    top: 26%;
   }
 
   .envelope .body .sub {

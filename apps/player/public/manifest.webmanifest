@@ -1,6 +1,6 @@
 {
-  "name": "Your Master",
-  "short_name": "Your Master",
+  "name": "Mine",
+  "short_name": "Mine",
   "description": "A story for you.",
   "start_url": "/",
   "display": "standalone",

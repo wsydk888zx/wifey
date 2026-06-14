@@ -4,7 +4,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.joncarpenter.yourswatching',
-  appName: 'Yours, Watching',
+  appName: 'Mine',
   webDir: 'dist',
   bundledWebRuntime: false,
 };

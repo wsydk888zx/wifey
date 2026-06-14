@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { replacePlaceholders } from '@wifey/story-core';
+import LetterReplay from './LetterReplay.jsx';
 
 const DEFAULT_TEASES = [
   'I said be patient. Come back later.',
@@ -21,21 +22,21 @@ function formatCountdown(unlockAt) {
   const diff = unlockAt - new Date();
   if (diff <= 0) return null;
 
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const totalSeconds = Math.floor(diff / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n) => String(n).padStart(2, '0');
 
-  if (hours > 24) {
-    const days = Math.floor(hours / 24);
-    return `opens in ${days}d ${hours % 24}h`;
-  }
-  if (hours > 0) return `opens in ${hours}h ${minutes}m`;
-  return `opens in ${minutes}m`;
+  if (hours > 0) return `opens in ${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
+  return `opens in ${minutes}m ${pad(seconds)}s`;
 }
 
-export default function LockedView({ envelope, unlockAt, storySettings, onUnlock }) {
+export default function LockedView({ envelope, unlockAt, storySettings, onUnlock, lastLetter, globalResponses }) {
   const [countdown, setCountdown] = useState(() => (unlockAt ? formatCountdown(unlockAt) : null));
   const [teaseIndex, setTeaseIndex] = useState(null);
   const [tapped, setTapped] = useState(false);
+  const [replayOpen, setReplayOpen] = useState(false);
 
   const rp = useCallback((text) => replacePlaceholders(text, storySettings), [storySettings]);
 
@@ -78,7 +79,7 @@ export default function LockedView({ envelope, unlockAt, storySettings, onUnlock
       }
     };
 
-    const timer = setInterval(checkUnlock, 30000);
+    const timer = setInterval(checkUnlock, 1000);
     const visibilityHandler = () => { if (document.visibilityState === 'visible') checkUnlock(); };
     const focusHandler = () => checkUnlock();
 
@@ -92,7 +93,7 @@ export default function LockedView({ envelope, unlockAt, storySettings, onUnlock
     };
   }, [unlockAt, onUnlock]);
 
-  const handleSealTap = () => {
+  const handleTease = () => {
     setTeaseIndex((prev) => prev === null ? 0 : (prev + 1) % teases.length);
     setTapped(true);
     setTimeout(() => setTapped(false), 600);
@@ -104,14 +105,24 @@ export default function LockedView({ envelope, unlockAt, storySettings, onUnlock
   const motif = envelope.sealMotif || '✦';
 
   return (
-    <div className="locked-view">
+    <div
+      className="locked-view"
+      onClick={handleTease}
+      role="button"
+      tabIndex={0}
+      aria-label="Sealed — tap for a word from him"
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          handleTease();
+        }
+      }}
+    >
       <div className="locked-view-inner">
 
-        <button
+        <div
           className={`locked-seal-host${tapped ? ' locked-seal-tapped' : ''}`}
-          onClick={handleSealTap}
-          aria-label="Sealed"
-          type="button"
+          aria-hidden="true"
         >
           <div className="seal-disc" />
           <div className="half left" />
@@ -119,7 +130,7 @@ export default function LockedView({ envelope, unlockAt, storySettings, onUnlock
           <div className="seal-rim" />
           <div className="seal-shine" />
           <div className="motif">{motif}</div>
-        </button>
+        </div>
 
         <div className="locked-text">
           {teaseIndex !== null ? (
@@ -135,7 +146,32 @@ export default function LockedView({ envelope, unlockAt, storySettings, onUnlock
         {countdown && (
           <div className="locked-countdown">{countdown}</div>
         )}
+
+        {lastLetter ? (
+          <button
+            className="locked-reread"
+            onClick={(event) => {
+              event.stopPropagation();
+              setReplayOpen(true);
+            }}
+            type="button"
+          >
+            Re-read his last letter
+          </button>
+        ) : null}
       </div>
+
+      {replayOpen && lastLetter ? (
+        <LetterReplay
+          card={lastLetter.card}
+          envelope={lastLetter.envelope}
+          addressee={herName === 'you' ? '' : herName}
+          storySettings={storySettings}
+          receivedAt={lastLetter.receivedAt}
+          globalResponses={globalResponses}
+          onClose={() => setReplayOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
